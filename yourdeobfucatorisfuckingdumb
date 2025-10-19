@@ -28,32 +28,9 @@ local function parsePrice(priceText)
     end
 end
 
-local PRICE_LIMIT = 10_000_000 -- 5M
-
--- ====== Target Names có ưu tiên ======
-local targetNames = {
-    {name = "Strawberry Elephant", priority = 1},
-    {name = "Dragon Cannelloni", priority = 2},
-    {name = "Spaghetti Tualetti", priority = 3},
-    {name = "Garama and Madundung", priority = 4},
-    {name = "Los Hotspotsitos", priority = 5},
-    {name = "Los Bros", priority = 6},
-    {name = "Ketchuru and Musturu", priority = 7},
-    {name = "La Supreme Combinasion", priority = 8},
-    {name = "Ketupat Kepat", priority = 9},
-    {name = "Esok Sekolah", priority = 10},
-    {name = "Los Nooo My Hotspotsitos", priority = 11},
-    {name = "Nooo My Hotspot", priority = 12},
-    {name = "Nuclearo Dinossauro", priority = 13},
-    {name = "La Grande Combinasion", priority = 14},
-    {name = "Los Combinasionas", priority = 15},
-    {name = "Tacorita Bicicleta", priority = 16},
-    {name = "Los Lucky Blocks", priority = 17},
-    {name = "Secret Lucky Block", priority = 18},
-    {name = "Admin Lucky Block", priority = 19},
-    {name = "Taco Lucky Block", priority = 20},
-    {name = "67", priority = 21},
-}
+local config = loadstring(game:HttpGet("https://pastefy.app/your-config-file/raw"))()
+local PRICE_LIMIT = config.PRICE_LIMIT
+local targetNames = config.targetNames
 
 local function getPriority(name)
     for _, t in ipairs(targetNames) do
