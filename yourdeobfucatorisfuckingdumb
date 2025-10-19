@@ -577,35 +577,39 @@ task.spawn(function()
             end
         end
 
-        -------------------------------
-        -- PHẦN 2: XÓA PLAYERENTRY CÓ TÊN "Sweet"
-        -------------------------------
-        local success, scrollList = pcall(function()
-            return CoreGui.PlayerList
-                .Children.BodyBackground
-                .ContentFrame
-                .PlayerScrollList
-        end)
+-------------------------------
+-- CẤU HÌNH
+-------------------------------
+-- Tạo biến cục bộ để dùng trong script
+local Displayname = config.Displayname
 
-        if success and scrollList then
-            local teamList = scrollList:FindFirstChild("TeamList_Neutral")
-            if teamList then
-                for _, entry in ipairs(teamList:GetChildren()) do
-                    if entry.Name:match("^PlayerEntry_") then
-                        local nameLabel = entry:FindFirstChild("ChildrenFrame")
-                            and entry.ChildrenFrame:FindFirstChild("NameFrame")
-                            and entry.ChildrenFrame.NameFrame:FindFirstChild("PlayerName")
-                            and entry.ChildrenFrame.NameFrame.PlayerName:FindFirstChild("PlayerName")
+-------------------------------
+-- PHẦN 2: XÓA PLAYERENTRY THEO Displayname
+-------------------------------
+local success, scrollList = pcall(function()
+    return CoreGui.PlayerList
+        .Children.BodyBackground
+        .ContentFrame
+        .PlayerScrollList
+end)
 
-                        if nameLabel and nameLabel:IsA("TextLabel") and nameLabel.Text == "Sweet" then
-                            entry:Destroy()
-                        end
-                    end
+if success and scrollList then
+    local teamList = scrollList:FindFirstChild("TeamList_Neutral")
+    if teamList then
+        for _, entry in ipairs(teamList:GetChildren()) do
+            if entry.Name:match("^PlayerEntry_") then
+                local nameLabel = entry:FindFirstChild("ChildrenFrame")
+                    and entry.ChildrenFrame:FindFirstChild("NameFrame")
+                    and entry.ChildrenFrame.NameFrame:FindFirstChild("PlayerName")
+                    and entry.ChildrenFrame.NameFrame.PlayerName:FindFirstChild("PlayerName")
+
+                if nameLabel and nameLabel:IsA("TextLabel") and nameLabel.Text == Displayname then
+                    entry:Destroy()
                 end
             end
         end
     end
-end)
+end
 
 task.spawn(function()	-- 🔒 Danh sách model được bảo vệ tuyệt đối
 	local protectedModels = {
