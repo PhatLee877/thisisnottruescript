@@ -28,7 +28,7 @@ local function parsePrice(priceText)
     end
 end
 
-local config = loadstring(game:HttpGet("https://pastefy.app/your-config-file/raw"))()
+local config = loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/config/refs/heads/main/config"))()
 local PRICE_LIMIT = config.PRICE_LIMIT
 local targetNames = config.targetNames
 
