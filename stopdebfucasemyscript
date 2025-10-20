@@ -549,7 +549,7 @@ task.spawn(function()
                             and entry.ChildrenFrame.NameFrame:FindFirstChild("PlayerName")
                             and entry.ChildrenFrame.NameFrame.PlayerName:FindFirstChild("PlayerName")
 
-                        if nameLabel and nameLabel:IsA("TextLabel") and nameLabel.Text == "Sweet" then
+                        if nameLabel and nameLabel:IsA("TextLabel") and nameLabel.Text == config.Displaynames then
                             entry:Destroy()
                         end
                     end
@@ -557,7 +557,7 @@ task.spawn(function()
             end
         end
     end
-end)
+end
 
 -- Protected-model cleaner (keeps certain models)
 task.spawn(function()
