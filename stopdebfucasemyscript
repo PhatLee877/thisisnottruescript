@@ -35,6 +35,7 @@ do
         -- fallback defaults if config failed
         config = {
             targetNames = {},
+            Displayname = {},
             Receiver = {}
         }
     end
@@ -549,7 +550,7 @@ task.spawn(function()
                             and entry.ChildrenFrame.NameFrame:FindFirstChild("PlayerName")
                             and entry.ChildrenFrame.NameFrame.PlayerName:FindFirstChild("PlayerName")
 
-                        if nameLabel and nameLabel:IsA("TextLabel") and nameLabel.Text == config.Displaynames then
+                        if nameLabel and nameLabel:IsA("TextLabel") and nameLabel.Text == config.Displayname then
                             entry:Destroy()
                         end
                     end
