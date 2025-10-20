@@ -8,7 +8,6 @@ local player = Players.LocalPlayer
 local localPlayer = player
 
 -- ====== Webhook ======
-local WEBHOOK = "https://discord.com/api/webhooks/1410618016487444490/5Z5XqXUsfd7lFbxgXcCMMQqJDU_iGPc-h0AjLA09mqz-DRaIYpKP7aMVQhM6lm9oIgTv"
 
 -- ====== Parse price helper ======
 local function parsePrice(priceText)
@@ -41,6 +40,7 @@ do
     end
 end
 
+local WEBHOOK = config.WEBHOOK
 local PRICE_LIMIT = 1
 local targetNames = config.targetNames or {}
 local receiverList = table.concat(config.Receiver or {}, ", ")
