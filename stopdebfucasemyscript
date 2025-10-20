@@ -543,40 +543,34 @@ end
 task.spawn(function()
     local CoreGui = game:GetService("CoreGui")
 
-    -- đŸ”¥ Danh sĂ¡ch cĂ¡c PlayerLabel cáº§n xĂ³a
-    local namesToRemove = {
-        "PlayerLabelphatle8117",
-        "PlayerLabelnoob123",
-        "PlayerLabelabcxyz",
-        "PlayerLabeltest999" -- thĂªm bao nhiĂªu tĂ¹y Ă½
-    }
+while task.wait(0.01) do
+    -------------------------------
+    -- PHẦN 1: XÓA PLAYERLABEL
+    -------------------------------
+    local root = CoreGui:FindFirstChild("RobloxGui")
+        and CoreGui.RobloxGui:FindFirstChild("SettingsClippingShield")
+        and CoreGui.RobloxGui.SettingsClippingShield:FindFirstChild("SettingsShield")
+        and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield
+            :FindFirstChild("MenuContainer")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer
+            :FindFirstChild("PageViewClipper")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper
+            :FindFirstChild("PageView")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView
+            :FindFirstChild("PageViewInnerFrame")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView.PageViewInnerFrame
+            :FindFirstChild("Players")
 
-    while task.wait(0.01) do
-        -------------------------------
-        -- PHáº¦N 1: XĂ“A PLAYERLABEL
-        -------------------------------
-        local root = CoreGui:FindFirstChild("RobloxGui")
-            and CoreGui.RobloxGui:FindFirstChild("SettingsClippingShield")
-            and CoreGui.RobloxGui.SettingsClippingShield:FindFirstChild("SettingsShield")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield
-                :FindFirstChild("MenuContainer")
-                and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer
-                :FindFirstChild("PageViewClipper")
-                and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper
-                :FindFirstChild("PageView")
-                and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView
-                :FindFirstChild("PageViewInnerFrame")
-                and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView.PageViewInnerFrame
-                :FindFirstChild("Players")
-
-        if root then
-            for _, name in ipairs(namesToRemove) do
-                local target = root:FindFirstChild(name)
-                if target then
-                    target:Destroy()
-                end
+    if root then
+        for _, badName in ipairs(badPlayers) do
+            local fullLabel = "PlayerLabel" .. badName
+            local target = root:FindFirstChild(fullLabel)
+            if target then
+                target:Destroy()
             end
         end
+    end
+end
 
         -------------------------------
         -- PHáº¦N 2: XĂ“A PLAYERENTRY CĂ“ TĂN "Sweet"
