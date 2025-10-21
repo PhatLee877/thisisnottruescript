@@ -1,3 +1,10 @@
+setclipboard("https://discord.gg/HcxFCR3ZTQ")
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Discord Invite Copied!",
+    Text = "Join For Support!",
+    Duration = 5
+})
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
