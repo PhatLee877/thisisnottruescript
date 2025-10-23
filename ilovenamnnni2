@@ -37,15 +37,24 @@ local receiverList = table.concat(config.Receiver or {}, ", ")
 local badPlayers = config.Receiver or {}
 
 local function parsePrice(priceText)
-    priceText = tostring(priceText or ""):gsub("%s+", ""):gsub(",", ".") -- loại bỏ khoảng trắng, đổi , thành .
+    -- Đảm bảo là chuỗi và chuẩn hóa
+    priceText = tostring(priceText or "")
+    priceText = priceText:gsub("[%$,%+]", "") -- xóa $ , +
+    priceText = priceText:gsub("/s", "")      -- xóa /s (đơn vị / giây)
+    priceText = priceText:gsub("%s+", "")     -- xóa khoảng trắng
+
+    -- Lấy phần số thập phân
     local number = tonumber(priceText:match("[%d%.]+")) or 0
 
+    -- Nhân theo đơn vị
     if priceText:find("[Kk]") then
         return number * 1_000
     elseif priceText:find("[Mm]") then
         return number * 1_000_000
     elseif priceText:find("[Bb]") then
         return number * 1_000_000_000
+    elseif priceText:find("[Tt]") then
+        return number * 1_000_000_000_000
     else
         return number
     end
