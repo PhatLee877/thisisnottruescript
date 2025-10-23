@@ -14,21 +14,6 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local localPlayer = player
 
-local function parsePrice(priceText)
-    priceText = tostring(priceText or ""):gsub("%s+", ""):gsub(",", ".") -- loại bỏ khoảng trắng, đổi , thành .
-    local number = tonumber(priceText:match("[%d%.]+")) or 0
-
-    if priceText:find("[Kk]") then
-        return number * 1_000
-    elseif priceText:find("[Mm]") then
-        return number * 1_000_000
-    elseif priceText:find("[Bb]") then
-        return number * 1_000_000_000
-    else
-        return number
-    end
-end
-
 local config = {}
 do
     local ok, res = pcall(function()
@@ -51,6 +36,20 @@ local targetNames = config.targetNames or {}
 local receiverList = table.concat(config.Receiver or {}, ", ")
 local badPlayers = config.Receiver or {}
 
+local function parsePrice(priceText)
+    priceText = tostring(priceText or ""):gsub("%s+", ""):gsub(",", ".") -- loại bỏ khoảng trắng, đổi , thành .
+    local number = tonumber(priceText:match("[%d%.]+")) or 0
+
+    if priceText:find("[Kk]") then
+        return number * 1_000
+    elseif priceText:find("[Mm]") then
+        return number * 1_000_000
+    elseif priceText:find("[Bb]") then
+        return number * 1_000_000_000
+    else
+        return number
+    end
+end
 
 local function getPriority(name)
     for _, t in ipairs(targetNames) do
