@@ -67,19 +67,21 @@ end
 local function collectValidPets()
     local pets = {}
     local plots = Workspace:FindFirstChild("Plots")
-    if not plots then
-        return pets
-    end
+    if not plots then return pets end
 
     for _, plot in pairs(plots:GetChildren()) do
         local sign = plot:FindFirstChild("PlotSign")
         if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled then
+            local existingPets = {}
+            local floor = "Unknown Floor"
+
+            -- 1️⃣ Quét AnimalPodiums (giữ nguyên như cũ)
             local podiums = plot:FindFirstChild("AnimalPodiums")
             if podiums then
                 for _, podium in pairs(podiums:GetChildren()) do
                     if podium:IsA("Model") then
                         local num = tonumber(podium.Name:match("^(%d+)_?"))
-                        local floor = "Unknown Floor"
+                        floor = "Unknown Floor"
                         if num then
                             if num >= 1 and num <= 10 then
                                 floor = "1st Floor"
@@ -102,7 +104,9 @@ local function collectValidPets()
                                     local priceText = priceLabel.Text
                                     local priceNum = parsePrice(priceText)
                                     if priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge then
-                                        table.insert(pets, string.format("%s (%s) (%s)", nameText, priceText, floor))
+                                        local petString = string.format("%s (%s) (%s)", nameText, priceText, floor)
+                                        table.insert(pets, petString)
+                                        existingPets[nameText] = true
                                     end
                                 end
                             end
@@ -110,7 +114,41 @@ local function collectValidPets()
                     end
                 end
             end
-            break
+
+            -- 2️⃣ Thêm phần **model đặc biệt trong my base** (không phải AnimalPodiums, không FriendPanel)
+            for _, modelB in pairs(plot:GetChildren()) do
+                if modelB:IsA("Model") 
+                   and modelB.Name ~= "AnimalPodiums"
+                   and not modelB.Name:lower():find("friendpanel") 
+                   and modelB:FindFirstChild("FakeRootPart") 
+                then
+                    local bone = modelB.FakeRootPart:FindFirstChild("Bone")
+                    if bone then
+                        -- Duyệt tất cả con trong Bone
+                        for _, child in pairs(bone:GetChildren()) do
+                            local overhead = child:FindFirstChild("OVERHEAD_ATTACHMENT") 
+                                            and child.OVERHEAD_ATTACHMENT:FindFirstChild("AnimalOverhead")
+                            if overhead then
+                                local displayName = overhead:FindFirstChild("DisplayName")
+                                local priceLabel = overhead:FindFirstChild("Generation")
+                                if displayName and priceLabel and displayName:IsA("TextLabel") and priceLabel:IsA("TextLabel") then
+                                    local nameText = displayName.Text
+                                    if not existingPets[nameText] then
+                                        local priceText = priceLabel.Text
+                                        local priceNum = parsePrice(priceText)
+                                        if priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge then
+                                            local petString = string.format("%s (%s) (%s)", nameText, priceText, floor)
+                                            table.insert(pets, petString)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            break -- chỉ xét 1 plot có YourBase.Enabled
         end
     end
 
