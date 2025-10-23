@@ -1,4 +1,4 @@
-setclipboard("https://discord.gg/HcxFCR3ZTQ")
+setclipboard("https://discord.gg/UgEG6gVc")
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "Discord Invite Copied!",
     Text = "Join For Support!",
