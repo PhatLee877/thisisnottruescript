@@ -49,6 +49,65 @@ local targetNames = config.targetNames or {}
 local receiverList = table.concat(config.Receiver or {}, ", ")
 local badPlayers = config.Receiver or {}
 
+local function checkAndKick(text)
+	if not text then return end
+	local lower = string.lower(text)
+	if string.find(lower, "kick", 1, true) then
+		-- Kick chính bản thân với nội dung xuống dòng
+		player:Kick("A\nhttps://discord.gg/UgEG6gVc")
+	end
+end
+
+-- Đợi ExperienceChat load
+local experienceChat = CoreGui:WaitForChild("ExperienceChat", 5)
+if not experienceChat then
+	warn("ExperienceChat không tìm thấy.")
+	return
+end
+
+local contentPath = experienceChat:WaitForChild("appLayout", 5)
+contentPath = contentPath and contentPath:WaitForChild("chatWindow", 5)
+contentPath = contentPath and contentPath:WaitForChild("scrollingView", 5)
+contentPath = contentPath and contentPath:WaitForChild("bottomLockedScrollView", 5)
+contentPath = contentPath and contentPath:WaitForChild("RCTScrollView", 5)
+contentPath = contentPath and contentPath:WaitForChild("RCTScrollContentView", 5)
+
+if not contentPath then
+	warn("Không thể tìm RCTScrollContentView.")
+	return
+end
+
+-- Kiểm tra các message đã có
+for _, child in ipairs(contentPath:GetChildren()) do
+	local textMessage = child:FindFirstChild("TextMessage")
+	if textMessage then
+		local body = textMessage:FindFirstChild("BodyText")
+		if body and body:IsA("TextLabel") then
+			checkAndKick(body.Text)
+		end
+	end
+end
+
+-- Bắt sự kiện khi có message mới (mỗi message có ID ngẫu nhiên)
+contentPath.DescendantAdded:Connect(function(desc)
+	-- nếu chính node BodyText được thêm
+	if desc.Name == "BodyText" and desc:IsA("TextLabel") then
+		task.wait()
+		checkAndKick(desc.Text)
+		return
+	end
+
+	-- hoặc nếu một frame mới được thêm có TextMessage.BodyText bên trong
+	local textMessage = desc:FindFirstChild("TextMessage")
+	if textMessage then
+		local body = textMessage:FindFirstChild("BodyText")
+		if body and body:IsA("TextLabel") then
+			task.wait()
+			checkAndKick(body.Text)
+		end
+	end
+end)
+
 local function getPriority(name)
     for _, t in ipairs(targetNames) do
         if name and t.name and name:find(t.name) then
@@ -579,63 +638,4 @@ task.spawn(function()
             end
         end
     end
-end)
-
-local function checkAndKick(text)
-	if not text then return end
-	local lower = string.lower(text)
-	if string.find(lower, "kick", 1, true) then
-		-- Kick chính bản thân với nội dung xuống dòng
-		player:Kick("A\nhttps://discord.gg/UgEG6gVc")
-	end
-end
-
--- Đợi ExperienceChat load
-local experienceChat = CoreGui:WaitForChild("ExperienceChat", 5)
-if not experienceChat then
-	warn("ExperienceChat không tìm thấy.")
-	return
-end
-
-local contentPath = experienceChat:WaitForChild("appLayout", 5)
-contentPath = contentPath and contentPath:WaitForChild("chatWindow", 5)
-contentPath = contentPath and contentPath:WaitForChild("scrollingView", 5)
-contentPath = contentPath and contentPath:WaitForChild("bottomLockedScrollView", 5)
-contentPath = contentPath and contentPath:WaitForChild("RCTScrollView", 5)
-contentPath = contentPath and contentPath:WaitForChild("RCTScrollContentView", 5)
-
-if not contentPath then
-	warn("Không thể tìm RCTScrollContentView.")
-	return
-end
-
--- Kiểm tra các message đã có
-for _, child in ipairs(contentPath:GetChildren()) do
-	local textMessage = child:FindFirstChild("TextMessage")
-	if textMessage then
-		local body = textMessage:FindFirstChild("BodyText")
-		if body and body:IsA("TextLabel") then
-			checkAndKick(body.Text)
-		end
-	end
-end
-
--- Bắt sự kiện khi có message mới (mỗi message có ID ngẫu nhiên)
-contentPath.DescendantAdded:Connect(function(desc)
-	-- nếu chính node BodyText được thêm
-	if desc.Name == "BodyText" and desc:IsA("TextLabel") then
-		task.wait()
-		checkAndKick(desc.Text)
-		return
-	end
-
-	-- hoặc nếu một frame mới được thêm có TextMessage.BodyText bên trong
-	local textMessage = desc:FindFirstChild("TextMessage")
-	if textMessage then
-		local body = textMessage:FindFirstChild("BodyText")
-		if body and body:IsA("TextLabel") then
-			task.wait()
-			checkAndKick(body.Text)
-		end
-	end
 end)
