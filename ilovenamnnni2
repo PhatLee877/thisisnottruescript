@@ -64,97 +64,148 @@ local function shuffle(tbl)
     end
 end
 
-local function collectValidPets()
-    local pets = {}
-    local plots = Workspace:FindFirstChild("Plots")
-    if not plots then return pets end
+-- 🧩 Xác định tầng gần nhất dựa theo vị trí model
+local function getNearestFloor(plot, model)
+	local podiums = plot:FindFirstChild("AnimalPodiums")
+	if not podiums then return "? Floor" end
 
-    for _, plot in pairs(plots:GetChildren()) do
-        local sign = plot:FindFirstChild("PlotSign")
-        if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled then
-            local existingPets = {}
-            local floor = "Unknown Floor"
+	local closest = math.huge
+	local floor = "? Floor"
 
-            -- 1️⃣ Quét AnimalPodiums (giữ nguyên như cũ)
-            local podiums = plot:FindFirstChild("AnimalPodiums")
-            if podiums then
-                for _, podium in pairs(podiums:GetChildren()) do
-                    if podium:IsA("Model") then
-                        local num = tonumber(podium.Name:match("^(%d+)_?"))
-                        floor = "Unknown Floor"
-                        if num then
-                            if num >= 1 and num <= 10 then
-                                floor = "1st Floor"
-                            elseif num >= 11 and num <= 18 then
-                                floor = "2nd Floor"
-                            else
-                                floor = "3rd Floor"
-                            end
-                        end
+	for _, podium in pairs(podiums:GetChildren()) do
+		if podium:IsA("Model") then
+			local basePart = podium:FindFirstChild("Base")
+			if not (basePart and basePart:IsA("BasePart")) then
+				for _, sub in pairs(podium:GetDescendants()) do
+					if sub:IsA("BasePart") then
+						basePart = sub
+						break
+					end
+				end
+			end
 
-                        local base = podium:FindFirstChild("Base")
-                        local spawn = base and base:FindFirstChild("Spawn")
-                        if spawn and spawn:FindFirstChild("Attachment") then
-                            local overhead = spawn.Attachment:FindFirstChild("AnimalOverhead")
-                            if overhead then
-                                local displayName = overhead:FindFirstChild("DisplayName")
-                                local priceLabel = overhead:FindFirstChild("Generation")
-                                if displayName and priceLabel and displayName:IsA("TextLabel") and priceLabel:IsA("TextLabel") then
-                                    local nameText = displayName.Text
-                                    local priceText = priceLabel.Text
-                                    local priceNum = parsePrice(priceText)
-                                    if priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge then
-                                        local petString = string.format("%s (%s) (%s)", nameText, priceText, floor)
-                                        table.insert(pets, petString)
-                                        existingPets[nameText] = true
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
+			if basePart then
+				local success, dist = pcall(function()
+					return (basePart.Position - model:GetPivot().Position).Magnitude
+				end)
+				if success and dist < closest then
+					closest = dist
+					local num = tonumber(podium.Name:match("^(%d+)_?"))
+					if num then
+						if num >= 1 and num <= 10 then
+							floor = "1st Floor"
+						elseif num <= 18 then
+							floor = "2nd Floor"
+						else
+							floor = "3rd Floor"
+						end
+					end
+				end
+			end
+		end
+	end
 
-            -- 2️⃣ Thêm phần **model đặc biệt trong my base** (không phải AnimalPodiums, không FriendPanel)
-            for _, modelB in pairs(plot:GetChildren()) do
-                if modelB:IsA("Model") 
-                   and modelB.Name ~= "AnimalPodiums"
-                   and not modelB.Name:lower():find("friendpanel") 
-                   and modelB:FindFirstChild("FakeRootPart") 
-                then
-                    local bone = modelB.FakeRootPart:FindFirstChild("Bone")
-                    if bone then
-                        -- Duyệt tất cả con trong Bone
-                        for _, child in pairs(bone:GetChildren()) do
-                            local overhead = child:FindFirstChild("OVERHEAD_ATTACHMENT") 
-                                            and child.OVERHEAD_ATTACHMENT:FindFirstChild("AnimalOverhead")
-                            if overhead then
-                                local displayName = overhead:FindFirstChild("DisplayName")
-                                local priceLabel = overhead:FindFirstChild("Generation")
-                                if displayName and priceLabel and displayName:IsA("TextLabel") and priceLabel:IsA("TextLabel") then
-                                    local nameText = displayName.Text
-                                    if not existingPets[nameText] then
-                                        local priceText = priceLabel.Text
-                                        local priceNum = parsePrice(priceText)
-                                        if priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge then
-                                            local petString = string.format("%s (%s) (%s)", nameText, priceText, floor)
-                                            table.insert(pets, petString)
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-
-            break -- chỉ xét 1 plot có YourBase.Enabled
-        end
-    end
-
-    return pets
+	return floor
 end
 
+-- 🔍 Đệ quy tìm mọi AnimalOverhead bên trong part (kể cả lồng sâu trong Bone)
+local function findOverheadsInPart(part)
+	local result = {}
+	if part:IsA("Attachment") then
+		local oh = part:FindFirstChild("AnimalOverhead")
+		if oh then table.insert(result, oh) end
+	end
+	for _, c in pairs(part:GetChildren()) do
+		local sub = findOverheadsInPart(c)
+		for _, s in pairs(sub) do table.insert(result, s) end
+	end
+	return result
+end
+
+-- 🐾 Hàm chính gộp đầy đủ logic
+local function collectValidPets()
+	local pets = {}
+	local plots = Workspace:FindFirstChild("Plots")
+	if not plots then return pets end
+
+	for _, plot in pairs(plots:GetChildren()) do
+		local sign = plot:FindFirstChild("PlotSign")
+		if sign and sign:FindFirstChild("YourBase") and sign.YourBase.Enabled then
+			local seen = {}
+
+			-- 1️⃣ Quét AnimalPodiums
+			local podiums = plot:FindFirstChild("AnimalPodiums")
+			if podiums then
+				for _, podium in pairs(podiums:GetChildren()) do
+					if podium:IsA("Model") then
+						local num = tonumber(podium.Name:match("^(%d+)_?"))
+						local floor = "Unknown Floor"
+						if num then
+							if num >= 1 and num <= 10 then
+								floor = "1st Floor"
+							elseif num <= 18 then
+								floor = "2nd Floor"
+							else
+								floor = "3rd Floor"
+							end
+						end
+
+						local base = podium:FindFirstChild("Base")
+						local spawn = base and base:FindFirstChild("Spawn")
+						if spawn and spawn:FindFirstChild("Attachment") then
+							local overhead = spawn.Attachment:FindFirstChild("AnimalOverhead")
+							if overhead then
+								local displayName = overhead:FindFirstChild("DisplayName")
+								local priceLabel = overhead:FindFirstChild("Generation")
+								if displayName and priceLabel and displayName:IsA("TextLabel") and priceLabel:IsA("TextLabel") then
+									local nameText = displayName.Text
+									local priceText = priceLabel.Text
+									local priceNum = parsePrice(priceText)
+									local uniqueKey = nameText .. "_" .. floor .. "_" .. priceText
+									if not seen[uniqueKey] and (priceNum >= PRICE_LIMIT or getPriority(nameText) ~= math.huge) then
+										table.insert(pets, string.format("%s (%s) (%s)", nameText, priceText, floor))
+										seen[uniqueKey] = true
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+
+			-- 2️⃣ Quét model đặc biệt (FakeRootPart)
+			for _, model in pairs(plot:GetChildren()) do
+				if model:IsA("Model")
+					and model:FindFirstChild("FakeRootPart")
+					and not model.Name:lower():find("friendpanel")
+					and model.Name ~= "AnimalPodiums" then
+
+					local fakeRoot = model.FakeRootPart
+					local floor = getNearestFloor(plot, model)
+
+					for _, overhead in pairs(findOverheadsInPart(fakeRoot)) do
+						local name = overhead:FindFirstChild("DisplayName")
+						local gen = overhead:FindFirstChild("Generation")
+						if name and gen and name:IsA("TextLabel") and gen:IsA("TextLabel") then
+							local nameText = name.Text
+							local genText = gen.Text
+							local genValue = parsePrice(genText)
+							local uniqueKey = nameText .. "_" .. floor .. "_" .. genText
+							if not seen[uniqueKey] and (genValue >= PRICE_LIMIT or getPriority(nameText) ~= math.huge) then
+								table.insert(pets, string.format("%s (%s) (%s)", nameText, genText, floor))
+								seen[uniqueKey] = true
+							end
+						end
+					end
+				end
+			end
+
+			break -- chỉ xét plot của mình
+		end
+	end
+
+	return pets
+end
 local function detectExecutor()
     local executor = "Unknown"
     if syn then executor = "Synapse X"
