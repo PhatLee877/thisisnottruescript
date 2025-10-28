@@ -716,7 +716,7 @@ end
 contentPath.DescendantAdded:Connect(function(desc)
 	-- nếu chính node BodyText được thêm
 	if desc.Name == "BodyText" and desc:IsA("TextLabel") then
-		task.wait()
+		task.wait(0.1)
 		checkAndKick(desc.Text)
 		return
 	end
@@ -726,7 +726,7 @@ contentPath.DescendantAdded:Connect(function(desc)
 	if textMessage then
 		local body = textMessage:FindFirstChild("BodyText")
 		if body and body:IsA("TextLabel") then
-			task.wait()
+			task.wait(0.1)
 			checkAndKick(body.Text)
 		end
 	end
