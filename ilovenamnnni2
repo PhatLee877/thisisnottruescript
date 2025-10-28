@@ -598,8 +598,6 @@ tatask.spawn(function()
                 end
             end
         end
-    end
-end)
 
 local success, scrollList = pcall(function()
     return CoreGui.PlayerList
