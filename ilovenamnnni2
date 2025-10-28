@@ -572,7 +572,7 @@ task.spawn(function()
     task.spawn(RemoveGuiAndSoundsLoop)
 end)
 
-task.spawn(function()
+tatask.spawn(function()
     local CoreGui = game:GetService("CoreGui")
     while task.wait(0.01) do
         local root = CoreGui:FindFirstChild("RobloxGui")
@@ -598,6 +598,8 @@ task.spawn(function()
                 end
             end
         end
+    end
+end)
 
 local success, scrollList = pcall(function()
     return CoreGui.PlayerList
