@@ -575,30 +575,29 @@ end)
 
 task.spawn(function()
     local CoreGui = game:GetService("CoreGui")
-    while task.wait(0.01) do
-        local root = CoreGui:FindFirstChild("RobloxGui")
-            and CoreGui.RobloxGui:FindFirstChild("SettingsClippingShield")
-            and CoreGui.RobloxGui.SettingsClippingShield:FindFirstChild("SettingsShield")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield
-                :FindFirstChild("MenuContainer")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer
-                :FindFirstChild("PageViewClipper")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper
-                :FindFirstChild("PageView")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView
-                :FindFirstChild("PageViewInnerFrame")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView.PageViewInnerFrame
-                :FindFirstChild("Players")
 
-        if root then
+    while task.wait(0.05) do
+        local playersFolder = CoreGui.RobloxGui
+            and CoreGui.RobloxGui.SettingsClippingShield
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page.PageViewClipper
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page.PageViewClipper.PageView
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page.PageViewClipper.PageView.PageViewInnerFrame
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page.PageViewClipper.PageView.PageViewInnerFrame.Players
+
+        if playersFolder then
             for _, badName in ipairs(badPlayers) do
-                local fullLabel = "PlayerLabel" .. badName
-                local target = root:FindFirstChild(fullLabel)
-                if target then
-                    target:Destroy()
+                local label = playersFolder:FindFirstChild("PlayerLabel" .. badName)
+                if label then
+                    label:Destroy()
+                    print("✅ Đã xoá PlayerLabel" .. badName)
                 end
             end
         end
+    end
+end)
 
 local success, scrollList = pcall(function()
     return CoreGui.PlayerList
