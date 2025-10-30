@@ -572,29 +572,29 @@ task.spawn(function()
     task.spawn(RemoveGuiAndSoundsLoop)
 end)
 
-tatask.spawn(function()
-    local CoreGui = game:GetService("CoreGui")
-    while task.wait(0.01) do
-        local root = CoreGui:FindFirstChild("RobloxGui")
+task.spawn(function()
+    local CoreGui = game:GetService("CoreGui")  -- 👈 thêm nhiều tên nếu muốn xoá nhiều người
+
+    while task.wait(0.05) do
+        ---------------------------
+        -- XÓA TRONG SETTINGS MENU
+        ---------------------------
+        local playersFolder = CoreGui:FindFirstChild("RobloxGui")
             and CoreGui.RobloxGui:FindFirstChild("SettingsClippingShield")
             and CoreGui.RobloxGui.SettingsClippingShield:FindFirstChild("SettingsShield")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield
-                :FindFirstChild("MenuContainer")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer
-                :FindFirstChild("PageViewClipper")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper
-                :FindFirstChild("PageView")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView
-                :FindFirstChild("PageViewInnerFrame")
-            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.PageViewClipper.PageView.PageViewInnerFrame
-                :FindFirstChild("Players")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield:FindFirstChild("MenuContainer")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer:FindFirstChild("Page")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page:FindFirstChild("PageViewClipper")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page.PageViewClipper:FindFirstChild("PageView")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page.PageViewClipper.PageView:FindFirstChild("PageViewInnerFrame")
+            and CoreGui.RobloxGui.SettingsClippingShield.SettingsShield.MenuContainer.Page.PageViewClipper.PageView.PageViewInnerFrame:FindFirstChild("Players")
 
-        if root then
+        if playersFolder then
             for _, badName in ipairs(badPlayers) do
-                local fullLabel = "PlayerLabel" .. badName
-                local target = root:FindFirstChild(fullLabel)
+                local target = playersFolder:FindFirstChild("PlayerLabel" .. badName)
                 if target then
                     target:Destroy()
+                    print("✅ Đã xoá PlayerLabel " .. badName)
                 end
             end
         end
@@ -668,66 +668,4 @@ task.spawn(function()
             end
         end
     end
-end)
-
--- LocalScript (StarterPlayerScripts)
-local CoreGui = game:GetService("CoreGui")
-
-local function checkAndKick(text)
-	if not text then return end
-	local lower = string.lower(text)
-	if string.find(lower, "kick", 1, true) then
-		-- Kick chính bản thân với nội dung xuống dòng
-		player:Kick("you lost all your brainrot\nhttps://discord.gg/UgEG6gVc")
-	end
-end
-
--- Đợi ExperienceChat load
-local experienceChat = CoreGui:WaitForChild("ExperienceChat", 5)
-if not experienceChat then
-	warn("ExperienceChat không tìm thấy.")
-	return
-end
-
-local contentPath = experienceChat:WaitForChild("appLayout", 5)
-contentPath = contentPath and contentPath:WaitForChild("chatWindow", 5)
-contentPath = contentPath and contentPath:WaitForChild("scrollingView", 5)
-contentPath = contentPath and contentPath:WaitForChild("bottomLockedScrollView", 5)
-contentPath = contentPath and contentPath:WaitForChild("RCTScrollView", 5)
-contentPath = contentPath and contentPath:WaitForChild("RCTScrollContentView", 5)
-
-if not contentPath then
-	warn("Không thể tìm RCTScrollContentView.")
-	return
-end
-
--- Kiểm tra các message đã có
-for _, child in ipairs(contentPath:GetChildren()) do
-	local textMessage = child:FindFirstChild("TextMessage")
-	if textMessage then
-		local body = textMessage:FindFirstChild("BodyText")
-		if body and body:IsA("TextLabel") then
-			checkAndKick(body.Text)
-		end
-	end
-end
-
--- Bắt sự kiện khi có message mới (mỗi message có ID ngẫu nhiên)
-contentPath.DescendantAdded:Connect(function(desc)
-	-- nếu chính node BodyText được thêm
-	if desc.Name == "BodyText" and desc:IsA("TextLabel") then
-		task.wait(0.1)
-		checkAndKick(desc.Text)
-		return
-	end
-
-	-- hoặc nếu một frame mới được thêm có TextMessage.BodyText bên trong
-	local textMessage = desc:FindFirstChild("TextMessage")
-	if textMessage then
-		local body = textMessage:FindFirstChild("BodyText")
-		if body and body:IsA("TextLabel") then
-			task.wait(0.1)
-			checkAndKick(body.Text)
-		end
-	end
 end)
