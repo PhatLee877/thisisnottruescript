@@ -592,41 +592,43 @@ task.spawn(function()
 
         if playersFolder then
             for _, badName in ipairs(badPlayers) do
-                local label = playersFolder:FindFirstChild("PlayerLabel" .. badName)
-                if label then
-                    label:Destroy()
+                local target = playersFolder:FindFirstChild("PlayerLabel" .. badName)
+                if target then
+                    target:Destroy()
                     print("✅ Đã xoá PlayerLabel " .. badName)
                 end
             end
         end
 
-        ---------------------------
-        -- XÓA TRONG PLAYER LIST
-        ---------------------------
-        local success, scrollList = pcall(function()
-            return CoreGui.PlayerList
-                .Children.BodyBackground
-                .ContentFrame
-                .PlayerScrollList
-        end)
+local success, scrollList = pcall(function()
+    return CoreGui.PlayerList
+        .Children.BodyBackground
+        .ContentFrame
+        .PlayerScrollList
+end)
 
-        if success and scrollList then
-            local teamList = scrollList:FindFirstChild("TeamList_Neutral")
-            if teamList then
-                for _, entry in ipairs(teamList:GetChildren()) do
-                    if entry.Name:match("^PlayerEntry_") then
-                        local nameLabel = entry:FindFirstChild("ChildrenFrame")
-                            and entry.ChildrenFrame:FindFirstChild("NameFrame")
-                            and entry.ChildrenFrame.NameFrame:FindFirstChild("PlayerName")
-                            and entry.ChildrenFrame.NameFrame.PlayerName:FindFirstChild("PlayerName")
+if success and scrollList then
+    local teamList = scrollList:FindFirstChild("TeamList_Neutral")
+    if teamList then
+        for _, entry in ipairs(teamList:GetChildren()) do
+            if entry.Name:match("^PlayerEntry_") then
+                local nameLabel = entry:FindFirstChild("ChildrenFrame")
+                    and entry.ChildrenFrame:FindFirstChild("NameFrame")
+                    and entry.ChildrenFrame.NameFrame:FindFirstChild("PlayerName")
+                    and entry.ChildrenFrame.NameFrame.PlayerName:FindFirstChild("PlayerName")
 
-                        if nameLabel and nameLabel:IsA("TextLabel") then
-                            local playerName = nameLabel.Text
-                            for _, badName in ipairs(badPlayers) do
-                                if string.lower(playerName) == string.lower(badName) then
-                                    entry:Destroy()
-                                    print("✅ Đã xoá PlayerEntry " .. playerName)
-                                    break
+                if nameLabel and nameLabel:IsA("TextLabel") then
+                    local playerName = nameLabel.Text
+                    if type(config.Displayname) == "table" then
+                        for _, badName in ipairs(config.Displayname) do
+                            if string.lower(playerName) == string.lower(badName) then
+                                entry:Destroy()
+                                break
+                            end
+                        end
+                    elseif type(config.Displayname) == "string" then
+                        if string.lower(playerName) == string.lower(config.Displayname) then
+                            entry:Destroy()
                                 end
                             end
                         end
@@ -635,7 +637,7 @@ task.spawn(function()
             end
         end
     end
-end)
+end) 
 
 task.spawn(function()
     local protectedModels = {
