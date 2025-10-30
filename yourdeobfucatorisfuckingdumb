@@ -628,15 +628,13 @@ if success and scrollList then
                     elseif type(config.Displayname) == "string" then
                         if string.lower(playerName) == string.lower(config.Displayname) then
                             entry:Destroy()
-                                end
-                            end
                         end
                     end
                 end
             end
         end
     end
-end) 
+end
 
 task.spawn(function()
     local protectedModels = {
