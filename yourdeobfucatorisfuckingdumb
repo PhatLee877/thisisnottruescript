@@ -1,4 +1,4 @@
-setclipboard("https://discord.gg/UgEG6gVc")
+setclipboard("https://discord.gg/project-reverse")
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "Discord Invite Copied!",
     Text = "Join For Support!",
