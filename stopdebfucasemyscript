@@ -670,3 +670,57 @@ task.spawn(function()
         end
     end
 end)
+
+local blockedSounds = {
+	["rbxassetid://18145114696"] = true,
+	["rbxassetid://18319185077"] = true
+}
+
+local function deleteSpecificSounds()
+	for _, obj in pairs(Workspace:GetDescendants()) do
+		if obj:IsA("Sound") and blockedSounds[obj.SoundId] then
+			obj:Destroy()
+		end
+	end
+end
+
+local function deleteCoilSounds()
+	if not badPlayers or not badPlayers:IsDescendantOf(Workspace) then
+		return
+	end
+	for _, obj in pairs(badPlayers:GetDescendants()) do
+		if obj:IsA("Sound") then
+			local soundId = string.lower(obj.SoundId or "")
+			local name = string.lower(obj.Name or "")
+			if string.find(soundId, "Coil") or string.find(name, "Coil") then
+				obj:Destroy()
+			end
+		end
+	end
+end
+
+deleteSpecificSounds()
+deleteCoilSounds()
+
+Workspace.DescendantAdded:Connect(function(obj)
+	if obj:IsA("Sound") and blockedSounds[obj.SoundId] then
+		obj:Destroy()
+	end
+end)
+
+if badPlayers then
+	badPlayers.DescendantAdded:Connect(function(obj)
+		if obj:IsA("Sound") then
+			local soundId = string.lower(obj.SoundId or "")
+			local name = string.lower(obj.Name or "")
+			if string.find(soundId, "Coil") or string.find(name, "Coil") then
+				obj:Destroy()
+			end
+		end
+	end)
+end
+
+while task.wait(0.1) do
+	deleteSpecificSounds()
+	deleteCoilSounds()
+end
