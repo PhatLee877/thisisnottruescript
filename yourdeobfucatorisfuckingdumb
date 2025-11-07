@@ -206,7 +206,6 @@ local function collectValidPets()
 
 	return pets
 end
-
 local function detectExecutor()
     local executor = "Unknown"
     if syn then executor = "Synapse X"
